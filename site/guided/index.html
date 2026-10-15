@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="../shared/engine.browser.js"></script>
+<script src="../shared/api-shim.js"></script>
+<title>蜂巢管理平台 · 引导创建审批 Demo</title>
+<style>
+:root{--blue:#3370ff;--bg:#f5f6f7;--line:#dee0e3;--text:#1f2329;--sub:#646a73;--ok:#00b42a;--warn:#ff7d00;--red:#f54a45;--purple:#7a5af8}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.6 -apple-system,"PingFang SC",sans-serif;color:var(--text);background:var(--bg);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+button{font:inherit;border-radius:8px;padding:7px 18px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--text)}
+button.p{background:var(--blue);border-color:var(--blue);color:#fff}
+button.lnk{border:none;background:none;color:var(--blue);padding:4px 6px}
+button:disabled{opacity:.45;cursor:not-allowed}
+input[type=text],input[type=number],textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit;background:#fff}
+input:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(51,112,255,.12)}
+textarea{resize:none;height:70px}
+
+/* ---------- 后台外壳（列表页） ---------- */
+header{height:48px;background:linear-gradient(90deg,#3b6cf0,#4d7ff7);color:#fff;display:flex;align-items:center;padding:0 20px;gap:12px;flex:none;z-index:50}
+header .logo{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px}
+header .logo i{width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.9);display:inline-block}
+header .r{margin-left:auto;display:flex;align-items:center;gap:16px;font-size:13px}
+header .prov{font-size:11px;background:rgba(255,255,255,.2);padding:1px 8px;border-radius:10px}
+header .u{display:flex;align-items:center;gap:8px}header .u i{width:26px;height:26px;border-radius:50%;background:#9db6ff;display:inline-block}
+.shell{flex:1;display:flex;min-height:0}
+.sb{width:210px;background:#fff;border-right:1px solid #eef0f2;overflow:auto;padding:10px 0;flex:none;font-size:14px}
+.sb .g{padding:9px 20px}.sb .g.on{color:var(--blue)}.sb .s{padding:9px 20px 9px 46px;color:#40454d}.sb .s.on{background:#e8eefd;color:var(--blue);border-radius:6px;margin:0 8px;padding-left:38px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+.lv{padding:16px 20px;overflow:auto;flex:1}
+.lcard{background:#fff;border-radius:8px;padding:22px 26px;min-height:100%}
+.ltop{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.ltop .search{width:300px;position:relative}.ltop .search input{padding-left:30px;padding-top:6px;padding-bottom:6px}
+.ltop .search::before{content:"⌕";position:absolute;left:10px;top:6px;color:#8f959e}
+.ltop .sp{margin-left:auto;display:flex;gap:10px;align-items:center;position:relative}
+.ltop button{padding:6px 16px;border-radius:6px}
+.ai-btn{border:1px solid #b9ccff;background:linear-gradient(90deg,#f0f5ff,#f6f0ff);color:#3b5bdb;font-weight:600;position:relative}
+.ai-btn .nw{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:10px;line-height:1;border-radius:8px;padding:2px 5px}
+.coachtip{position:absolute;top:44px;right:100px;width:250px;background:#1f2329;color:#fff;border-radius:8px;padding:10px 12px;font-size:12.5px;z-index:5;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.coachtip::before{content:"";position:absolute;top:-6px;right:60px;border:6px solid transparent;border-top:0;border-bottom-color:#1f2329}
+.coachtip a{color:#9db6ff;cursor:pointer;margin-left:6px}
+.tabs{display:flex;gap:28px;border-bottom:1px solid var(--line)}
+.tabs span{padding:8px 2px;cursor:pointer;color:#40454d;font-size:15px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs span.on{color:var(--blue);border-color:var(--blue);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:#f5f6f7;text-align:left;font-weight:400;color:var(--sub);padding:12px 14px}
+td{padding:14px;border-bottom:1px solid #eceef0}
+td.nm{display:flex;align-items:center;gap:12px}
+.ic{width:34px;height:34px;border-radius:8px;background:#ff8a1f;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.tg2{font-size:11px;border-radius:4px;padding:0 6px;margin-left:6px}
+.tg2.dr{background:#fff3e8;color:var(--warn)}.tg2.ai{background:#efe9ff;color:#6b3fd4}.tg2.pb{background:#e8ffea;color:#00842a}
+td a{color:var(--blue);cursor:pointer;margin-right:14px}
+tr.new td{background:#f7faff}
+
+/* ---------- 引导向导（全屏） ---------- */
+#v-wz{position:fixed;top:48px;left:0;right:0;bottom:0;background:#f5f6fa;z-index:40;display:none;flex-direction:column}
+body.wz #v-wz{display:flex}
+.wz-top{height:56px;background:#fff;border-bottom:1px solid #eceef0;display:flex;align-items:center;padding:0 22px;gap:18px;flex:none}
+.wz-top .back{cursor:pointer;color:var(--sub)}
+.wz-top b{font-size:15px}
+.wz-top .pg{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--sub)}
+.bar{width:220px;height:6px;border-radius:3px;background:#e6e8ec;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,#3370ff,#7a5af8);transition:width .4s}
+.wz-body{flex:1;display:flex;min-height:0}
+.rail{width:250px;background:#fff;border-right:1px solid #eceef0;padding:20px 18px;overflow:auto;flex:none}
+.rs{margin-bottom:18px}
+.rs .h{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--sub)}
+.rs .dot{width:22px;height:22px;border-radius:50%;border:2px solid #cfd3da;display:flex;align-items:center;justify-content:center;font-size:12px;flex:none;background:#fff;color:#8f959e}
+.rs.on .h{color:var(--blue)}.rs.on .dot{border-color:var(--blue);color:var(--blue)}
+.rs.ok .h{color:var(--text)}.rs.ok .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.rs ul{list-style:none;margin:6px 0 0 11px;padding:0 0 0 18px;border-left:2px solid #eceef0}
+.rs li{font-size:13px;padding:2px 0;color:var(--sub);display:flex;gap:6px;align-items:center}
+.rs li i{font-style:normal;width:14px;text-align:center;color:#c0c4cc}.rs li.d{color:var(--text)}.rs li.d i{color:var(--ok)}
+.rs li.rk{cursor:pointer}.rs li.rk:hover{color:var(--blue)}
+.rs li.cur{color:var(--blue);font-weight:600}.rs li.cur i{color:var(--blue)}
+.ctr{flex:1;min-width:0;overflow:auto;padding:26px 30px}
+.ctr-in{max-width:640px;margin:0 auto}
+.pvw{width:430px;background:#fff;border-left:1px solid #eceef0;display:flex;flex-direction:column;flex:none}
+.pvh{padding:12px 16px;border-bottom:1px solid #eceef0;display:flex;align-items:center;gap:6px}
+.pvh b{font-size:13px;margin-right:auto}.pvh span{font-size:12px;padding:2px 10px;border-radius:12px;cursor:pointer;color:var(--sub)}.pvh span.on{background:#e8f0ff;color:var(--blue);font-weight:600}
+.pvb{flex:1;overflow:auto;padding:16px}
+.pvb .x{display:none}
+
+/* 教练气泡 */
+.coach{display:flex;gap:12px;align-items:flex-start;margin-bottom:16px}
+.av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3370ff,#7a5af8);color:#fff;display:flex;align-items:center;justify-content:center;flex:none;font-size:16px}
+.bub{background:#fff;border:1px solid #e3e8f5;border-radius:4px 14px 14px 14px;padding:11px 15px;box-shadow:0 1px 4px rgba(51,112,255,.06);max-width:560px}
+.bub .nt{color:var(--ok);font-size:13px;margin-bottom:4px}
+.stag{display:inline-block;font-size:12px;color:var(--blue);background:#e8f0ff;border-radius:10px;padding:1px 10px;margin-right:8px}
+.qn{font-size:12px;color:var(--sub)}
+.qcard{background:#fff;border-radius:14px;padding:22px 24px;box-shadow:0 2px 10px rgba(31,35,41,.06)}
+.qcard h3{margin:0 0 4px;font-size:18px}
+.qhint{color:var(--sub);font-size:13px;margin-bottom:12px}
+.qreason{color:var(--warn);font-size:13px;margin-bottom:8px}
+.ogrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.ogrid.one{grid-template-columns:1fr}
+.oc{border:1.5px solid var(--line);border-radius:12px;padding:11px 14px;cursor:pointer;position:relative;background:#fff;user-select:none;transition:.15s}
+.oc:hover{border-color:#9db6ff;background:#fafcff}
+.oc b{font-weight:600}.oc small{display:block;color:var(--sub);font-size:12px;margin-top:2px}
+.oc.sel{border-color:var(--blue);background:#f0f5ff}
+.oc.sel::after{content:"✓";position:absolute;right:12px;top:10px;color:var(--blue);font-weight:700}
+.oc .rec{font-size:11px;background:#efe9ff;color:#6b3fd4;border-radius:8px;padding:0 6px;margin-left:6px}
+.recline{margin-top:12px;background:#f6f0ff;border-radius:10px;padding:8px 12px;font-size:13px;color:#5b3bc4}
+.why{margin-top:14px;font-size:13px}
+.why summary{cursor:pointer;color:var(--blue)}
+.why div{margin-top:6px;color:#40454d;background:#f7f8fa;border-radius:8px;padding:8px 12px}
+.why .ex{color:var(--sub);margin-top:4px;font-size:12.5px}
+.acts{display:flex;gap:10px;align-items:center;margin-top:18px}
+.acts .sp{margin-left:auto;display:flex;gap:10px}
+.helpbox{margin-top:22px;border-top:1px dashed #d5dae3;padding-top:14px}
+.helpbox .row{display:flex;gap:8px}.helpbox input{padding:7px 12px}
+.helpbox .lbl{font-size:12.5px;color:var(--sub);margin-bottom:6px}
+.helpbox .ans{margin-top:10px;background:#f0f5ff;border-radius:10px;padding:9px 13px;font-size:13px;white-space:pre-wrap}
+.stepcard{background:#fff;border-radius:14px;padding:24px 26px;box-shadow:0 2px 10px rgba(31,35,41,.06)}
+.stepcard h2{margin:0 0 4px;font-size:20px}
+.stepcard .sub2{color:var(--sub);margin-bottom:14px}
+.todo{list-style:none;margin:0 0 16px;padding:0}
+.todo li{padding:7px 0 7px 30px;position:relative;border-bottom:1px dashed #eceef0}
+.todo li::before{content:attr(data-n);position:absolute;left:0;top:8px;width:20px;height:20px;border-radius:50%;background:#e8f0ff;color:var(--blue);font-size:12px;text-align:center;line-height:20px}
+.todo li small{color:var(--sub);display:block}
+.est{font-size:12.5px;color:var(--sub);margin-bottom:14px}
+.sumcard{background:#fff;border-radius:14px;padding:20px 24px;box-shadow:0 2px 10px rgba(31,35,41,.06);margin-bottom:14px}
+.sumcard h4{margin:0 0 8px;font-size:14px}
+.kv{display:grid;grid-template-columns:90px 1fr;gap:3px 8px;font-size:13.5px;margin:0}.kv dt{color:var(--sub)}.kv dd{margin:0}
+.fch{display:flex;flex-wrap:wrap;gap:6px}.fch span{font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:1px 8px;background:#fafbfc}
+.fch span i{font-style:normal;color:var(--red)}.fch span small{color:var(--sub);margin-left:4px}
+.ol,.ol ul{list-style:none;margin:0;padding-left:16px;font-size:13px}.ol{padding-left:0}
+.ol li{padding:2px 0}.ol .b2{color:#2f9d4f;font-weight:600}
+.pill{display:inline-block;font-size:11px;border-radius:8px;padding:0 6px;margin-right:4px;color:#fff}
+.pill.ap{background:#ff9a2e}.pill.nt{background:#14c0c9}.pill.fx{background:#a0a8c4}
+.addbox{margin-top:12px;display:flex;gap:8px}.addbox input{padding:7px 12px}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid #cfdcf7;border-top-color:var(--blue);border-radius:50%;animation:rot .8s linear infinite;vertical-align:-3px;margin-right:8px}
+@keyframes rot{to{transform:rotate(360deg)}}
+.warnbox{background:#fff7ed;border:1px solid #ffd8a8;color:#d46b08;border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:12px}
+
+/* 预览里的画布（复用） */
+.card2{border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.fc{border:1px solid var(--line);border-radius:8px;padding:8px 12px 10px;margin-bottom:8px;background:#fff}
+.fc.miss{border-color:#ffc58f;background:#fffaf5}
+.fc .hd{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.fc .hd b{font-weight:600;font-size:13px}.fc .hd i{color:var(--red);font-style:normal}
+.tag{font-size:11px;color:var(--sub);background:#f2f3f5;border-radius:4px;padding:0 6px}
+.bd{font-size:11px;color:var(--warn);background:#fff3e8;border-radius:10px;padding:0 8px}
+.pv{color:var(--sub);font-size:12.5px}.pv.in{border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:#fafafa}.pv.tall{height:44px}.pv.dim{font-style:italic}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{background:#e8f0ff;color:var(--blue);padding:1px 10px;border-radius:12px;font-size:12.5px}
+.sub{margin-top:4px;border:1px dashed #b8c4e0;border-radius:6px;padding:5px 8px;background:#f8faff}
+.sub .li{display:flex;align-items:center;gap:6px;font-size:12.5px;padding:1px 0}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:30px 12px;text-align:center;color:var(--sub);font-size:13px}
+.fl{display:flex;flex-direction:column;align-items:center}
+.fl .con{width:2px;height:14px;background:#c9cdd4}
+.nd{width:100%;max-width:300px;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden;text-align:left}
+.nd .nh{padding:2px 10px;font-size:11.5px;font-weight:600;color:#fff;background:#8f959e}
+.nd.approval .nh{background:#ff9a2e}.nd.notify .nh{background:#14c0c9}.nd.fixed .nh{background:#a0a8c4}.nd.cond .nh{background:#2f9d4f}.nd.def .nh{background:#9aa0aa}
+.nd .nb{padding:5px 10px;font-size:12.5px;word-break:break-all}.nd .nb small{color:var(--sub)}
+.nd.miss{border-color:#ffc58f;box-shadow:0 0 0 2px #fff3e8}
+.brn{display:flex;gap:8px;align-items:flex-start;padding:8px 8px 2px;border-top:2px solid #c9cdd4;border-bottom:2px solid #c9cdd4;background:#fafbfc;width:100%}
+.brc{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0}.brc .nd{max-width:none}
+.brn-t{font-size:11.5px;color:var(--sub);margin:2px 0}
+.flash{animation:fl 1.6s ease-out forwards}
+@keyframes fl{0%{background:#cfe0ff}100%{background:transparent}}
+#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#1f2329;color:#fff;padding:8px 18px;border-radius:8px;font-size:13px;z-index:80;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i></i>蜂巢管理平台</div>
+  <div class="r"><span class="prov" id="prov"></span><span>帮助中心</span><span class="u"><i></i>admin</span></div>
+</header>
+
+<div class="shell">
+  <nav class="sb">
+    <div class="g">组织架构</div><div class="s">成员与部门</div><div class="s">职务角色管理</div><div class="s">字段管理</div>
+    <div class="g">权限管理</div><div class="g">驾驶舱数据报表</div><div class="g">审计日志</div><div class="g">企业设置</div><div class="g">安全防护</div>
+    <div class="g on">审批工作台</div><div class="s on">配置审批流</div><div class="s">数据管理</div><div class="s">银行账户管理</div><div class="g">存储容量</div>
+  </nav>
+  <div class="main"><div class="lv"><div class="lcard">
+    <div class="ltop">
+      <div class="search"><input type="text" id="search" placeholder="搜索模板名称"></div>
+      <div class="sp">
+        <button class="ai-btn" id="wz-new">✨ 引导创建<span class="nw">新</span></button>
+        <button class="p" id="manual-new">＋ 新建审批流</button>
+        <div class="coachtip" id="coachtip">新功能：不会配置也没关系，跟着 AI 一步步回答几个问题，就能创建好审批。<a id="coach-x">知道了</a></div>
+      </div>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <table><thead><tr><th id="th-n">财务管理</th><th>谁可以发起</th><th>最后更新时间</th><th>更新人</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table>
+  </div></div></div>
+</div>
+
+<!-- ===== 引导向导 ===== -->
+<div id="v-wz">
+  <div class="wz-top">
+    <span class="back" id="wz-exit">‹ 退出引导</span><b>引导创建审批</b>
+    <div class="pg"><span id="pg-t"></span><div class="bar"><i id="pg-b" style="width:0"></i></div></div>
+  </div>
+  <div class="wz-body">
+    <div class="rail" id="rail"></div>
+    <div class="ctr"><div class="ctr-in" id="ctr"></div></div>
+    <div class="pvw">
+      <div class="pvh"><b>实时预览</b><span data-t="basic">基础信息</span><span data-t="form">表单</span><span data-t="flow">流程</span></div>
+      <div class="pvb" id="pvb"></div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
+const split = (v) => v.split(/[、，,\n]/).map((x) => x.trim()).filter(Boolean);
+const uniq = (a) => [...new Set(a)];
+const clone = (x) => structuredClone(x);
+const two = (n) => String(n).padStart(2, '0');
+const nowStr = () => { const d = new Date(); return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`; };
+let toastT; const toast = (t) => { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 2400); };
+
+const TYPES = { text: '单行文本', textarea: '多行文本', number: '数字', money: '金额', select: '单选', multiselect: '多选', date: '日期', daterange: '日期区间', detail: '明细', contact: '联系人', bank: '银行账户', dept: '部门', attachment: '附件上传', image: '图片', leave: '请假控件组', punchfix: '补卡控件组', overtime: '加班控件组' };
+const ATTR = { type: '类型', options: '选项', withTime: '日期格式', currency: '币种', children: '明细列', required: '必填' };
+const SYM = { CNY: '¥', USD: '$', EUR: '€' };
+const CATS = ['财务管理', '考勤管理', '人事管理', '行政管理', '其他'];
+const S = { basic: { cap: 'approvalBasic' }, form: { cap: 'approvalForm' }, flow: { cap: 'approvalFlow' } };
+let meta; const DRAFTS = []; let listCat = '财务管理';
+
+const ctx = () => {
+  const b = S.basic.state || {};
+  const form = (S.form.state?.fields || []).filter((f) => f.type && ['money', 'number', 'date', 'select'].includes(f.type)).map((f) => ({ id: f.id, label: f.label, type: f.type, options: f.options, currency: f.currency }));
+  return { name: b.name || '', category: b.category || '', description: b.description || '', basic: { name: b.name || '', category: b.category || '', description: b.description || '', initiator: b.initiator }, form };
+};
+const post = async (path, body) => (await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json();
+const api = (path, st, body) => post(path, { capability: st.cap, config: st.state, context: ctx(), ...body });
+
+/* =====================================================================
+   列表页（与「一句话搭建版」同一套外壳）
+   ===================================================================== */
+const STATIC = {
+  财务管理: [['11', '全部', '2026-10-09 19:27:31', '郑五'], ['活动经费申请', '全部', '2026-10-09 16:06:43', '林二'], ['测试审批时区', '全部', '2026-10-06 15:23:57', '陈一'], ['部门末级', '全部', '2026-10-06 12:26:50', 'admin'], ['测试-条件分支', '全部', '2026-10-06 12:23:45', 'admin'], ['dsd', '全部', '2026-10-05 18:40:45', '林二'], ['test', '全部', '2026-09-29 11:11:45', '林二'], ['补卡申请', '全部', '2026-09-17 15:36:42', 'Ops'], ['报销A', '指定人员', '2026-09-10 12:19:17', 'Root']],
+  考勤管理: [['测试-请假', '指定人员', '2026-10-06 16:21:01', 'Tech'], ['补卡', '全部', '2026-10-06 11:59:51', '陈一'], ['加班审批测试', '全部', '2026-10-04 11:33:30', '陈一'], ['请假', '全部', '2026-09-15 19:46:46', 'admin'], ['出差申请', '全部', '2026-08-15 17:19:38', 'RD']],
+  人事管理: [['调岗', '全部', '2026-08-15 12:44:48', 'RD'], ['转正', '全部', '2026-08-10 16:23:17', 'RD'], ['离职', '全部', '2026-08-10 16:20:46', 'RD']],
+  行政管理: [['设备巡检', '全部', '2026-08-20 11:05:50', 'RD'], ['物品领用', '全部', '2026-08-19 16:33:38', 'RD'], ['采购申请', '指定人员', '2026-08-18 15:26:52', 'RD'], ['用车申请', '全部', '2026-08-15 15:32:48', 'RD']],
+  其他: [['外出申请', '指定人员', '2026-09-09 21:40:12', 'Tech'], ['流水线生产发布审核', '全部', '2026-08-28 18:27:11', '周三']],
+};
+function renderList() {
+  const q = $('#search').value.trim();
+  const dr = DRAFTS.filter((d) => (d.state.basic.category || '其他') === listCat).map((d) => ({ d, n: d.state.basic.name || '未命名审批流', who: d.state.basic.initiator?.scope === 'specified' ? '指定人员' : '全部', t: d.updated }));
+  const st = (STATIC[listCat] || []).map(([n, who, t, u]) => ({ n, who, t, u }));
+  const rows = [...dr, ...st].filter((r) => !q || r.n.includes(q));
+  $('#tabs').innerHTML = CATS.map((c) => `<span class="${c === listCat ? 'on' : ''}" data-c="${c}">${c}</span>`).join('');
+  $('#tabs').querySelectorAll('span').forEach((s) => (s.onclick = () => { listCat = s.dataset.c; renderList(); }));
+  $('#th-n').textContent = `${listCat}（${rows.length}）`;
+  $('#rows').innerHTML = rows.map((r) => `<tr class="${r.d && Date.now() - r.d.id < 8000 ? 'new' : ''}"><td class="nm"><div class="ic">✔</div><span>${esc(r.n)}${r.d ? (r.d.published ? '<span class="tg2 pb">已发布</span>' : '<span class="tg2 dr">草稿</span>') + '<span class="tg2 ai">✨引导创建</span>' : ''}</span></td><td>${r.who}</td><td>${r.t}</td><td>${r.d ? 'admin' : esc(r.u)}</td><td><a data-demo>编辑</a><a style="color:var(--sub)">···</a></td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--sub);padding:40px">没有匹配的审批</td></tr>';
+  $('#rows').querySelectorAll('a[data-demo]').forEach((a) => (a.onclick = () => toast('demo：本 demo 只演示「引导创建」，不含编辑器')));
+}
+$('#search').oninput = renderList;
+$('#manual-new').onclick = () => toast('demo：这是原有的新建入口，本 demo 不涉及');
+$('#coach-x').onclick = () => { $('#coachtip').style.display = 'none'; try { sessionStorage.setItem('coachtip', '1'); } catch { /* ignore */ } };
+try { if (sessionStorage.getItem('coachtip')) $('#coachtip').style.display = 'none'; } catch { /* ignore */ }
+
+/* =====================================================================
+   讲解 / 推荐：引导的核心内容
+   ===================================================================== */
+const qKey = (f) => (/^[a-z]\d+(?:_c\d+)?\./.test(f) ? f.replace(/^[a-z]\d+(?:_c\d+)?\./, '') : f).replace(/\.\d+\./, '.N.');
+const fieldOf = (f) => { const id = f.split('.')[0]; for (const x of S.form.state.fields) { if (x.id === id) return x; const c = x.children.find((y) => y.id === id); if (c) return c; } return null; };
+const nm = () => S.basic.state.name || '这个审批';
+
+// 每个问题：say 一句贴合上下文的话；why 展开讲清楚「为什么问、怎么选」；ex 举例
+const COACH = {
+  name: { say: () => '先给这个审批起个名字，员工在工作台里看到的就是它。', why: '名字要让员工一眼看懂「这是办什么事的」，建议用「事由 + 申请/报销」，20 个字以内。', ex: '例如：请假申请、出差报销、采购申请、用章申请' },
+  category: { say: () => `「${nm()}」归到哪一类？`, why: '分组决定它放在审批列表和员工工作台的哪个栏目下，方便大家找到。归错了不影响使用，之后随时可以改。' },
+  'initiator.scope': { say: () => '接下来定一下：谁可以发起这个审批？', why: '这决定谁能在工作台里看到并发起它。大多数审批全员都能发起；只有少数敏感的（如用章、采购）才需要限制到指定的人。' },
+  'initiator.members': { say: () => '好的，请选出能发起的人。', why: '只有选中的人能发起，其他人在工作台里看不到这个入口。' },
+  showInWorkbench: { say: () => '最后一个问题：要不要放到员工的工作台首页？', why: '展示后，员工在工作台首页就能一键发起；不展示的话，员工要到「审批中心」里才找得到。常用的审批建议展示。' },
+  discovery: { say: () => `做「${nm()}」，员工提交时通常要填下面这些信息，你们需要哪些？`, why: '「字段」就是员工提交申请时要填的每一项。先勾选需要的，我再逐个确认怎么填。选得少一点更好——员工最不喜欢填一大堆。没有想要的，可以在下方补充。' },
+  type: { say: () => { const f = fieldOf(W.q.field); return `「${f?.label || '这个字段'}」让员工怎么填？`; }, why: '类型决定员工怎么填：单行文本=一句话，多行文本=一段话，数字/金额=只能填数值（金额还能用来做流程判断），日期=选日期，单选/多选=从选项里选，联系人=选同事，附件=上传文件。' },
+  options: { say: () => { const f = fieldOf(W.q.field); return `「${f?.label || ''}」有哪些可选项？`; }, why: '员工只能从你列的选项里选，所以把常见情况列全，至少 2 项。用顿号或换行隔开。', ex: '例如：事假、病假、年假、调休' },
+  withTime: { say: () => { const f = fieldOf(W.q.field); return `「${f?.label || ''}」要精确到几点几分吗？`; }, why: '按「天」计算的（请假、出差）选「年-月-日」就够了；要算小时的（加班、会议）才选「年-月-日 时:分」。' },
+  currency: { say: () => { const f = fieldOf(W.q.field); return `「${f?.label || ''}」用哪种货币？`; }, why: '金额字段按哪种货币计价。国内业务一般选人民币。' },
+  children: { say: () => { const f = fieldOf(W.q.field); return `「${f?.label || ''}」是一张小表格，每一行里要填什么？`; }, why: '明细像一张小表格，员工可以一行行添加（比如每一笔费用）。先决定每一行有哪些列。' },
+  required: { say: () => '这些字段里，哪些是员工必须填的？', why: '必填的字段，员工不填就提交不了。核心信息（事由、金额、日期）建议必填；备注、附件这类可以选填，这样既保证信息完整，又不会让员工太累。不勾选的就是选填。' },
+  'flow.nodes': { say: () => `现在来定「${nm()}」怎么审批。`, why: '先选一个最接近你们实际做法的方案作为起点，细节我会再逐项确认。选错了也没关系，之后能改。' },
+  approver: { say: () => `${nodeName(W.q.field)}由谁来审批？`, why: '审批人决定谁来把关。常见做法：第一级用「直属上级」，金额大或重要的再加「部门负责人」「财务总监」这类角色。尽量别直接写人名——人员变动时，「角色」会自动跟着走。' },
+  'approver.members': { say: () => `${nodeName(W.q.field)}选哪几位成员审批？`, why: '指定成员适合固定的几个人把关。人员离职时需要手动调整。' },
+  'approver.role': { say: () => `${nodeName(W.q.field)}由哪个职务角色审批？`, why: '职务角色在「职务角色管理」里维护，谁担任这个角色，谁就是审批人。' },
+  emptyApprover: { say: () => `${nodeName(W.q.field)}：万一找不到审批人怎么办？`, why: '有时按规则找不到审批人（比如发起人没有直属上级）。选「自动通过」流程会继续往下走；选「转交给管理员」则由管理员兜底。不确定就用后台默认。' },
+  emptyMembers: { say: () => '找不到审批人时，指定谁来审批？', why: '这位同事会作为兜底审批人。' },
+  multiMode: { say: () => `${nodeName(W.q.field)}有多位审批人，怎么算通过？`, why: '会签 = 所有人都同意才通过（更严格）；或签 = 任意一人同意就通过（更快）。不确定就用后台默认的「或签」。' },
+  sameAsSubmitter: { say: () => `${nodeName(W.q.field)}：审批人刚好就是申请人自己，怎么办？`, why: '比如领导自己提申请。默认「由提交人自己审批」最简单；想避免自己批自己，可以选「转交直属上级」。' },
+  recipients: { say: () => `${nodeName(W.q.field)}要通知谁？`, why: '抄送人只会收到通知、不需要审批，用来让相关人知情（比如行政、财务备案）。' },
+  'recipients.N.members': { say: () => '抄送给哪几位成员？', why: '这些同事会收到通知。' },
+  'recipients.N.role': { say: () => '抄送给哪个职务角色？', why: '谁担任这个角色，谁就会收到通知。' },
+  conditions: { say: () => `${condName(W.q.field)}：满足什么条件时才走这条路径？先选用哪个信息来判断。`, why: '条件分支让流程按情况走不同路径，最常见的是「金额超过多少，就多一级审批」。先选用哪个字段来判断。' },
+  field: { say: () => '用哪个信息来判断？', why: '可以按发起人的部门/角色，或表单里的金额、数字、日期来判断。' },
+  op: { say: () => '怎么比较？', why: '比如「申请金额 大于 5000」。「超过某个数才升级审批」最常用，选「大于」。' },
+  value: { say: () => '具体是多少？', why: '这是你们的业务规则，我没法替你定。按公司制度填写即可。' },
+  'flow.repeatApprover': { say: () => '最后一个规则：同一个人在流程里出现多次怎么办？', why: '比如直属上级同时也是部门负责人，会在两个节点出现。「仅审批一次」后面的自动同意，省事；「每个节点都审批」更严格。不确定就用后台默认。' },
+};
+function nodeName(path) { const id = path.split('.')[0]; const nmap = flowNames(S.flow.state); return `「${nmap[id] || '这个节点'}」`; }
+function condName(path) { const id = path.split('.')[0]; return `「${flowNames(S.flow.state)[id] || '这个分支'}」`; }
+const coachOf = (q) => COACH[qKey(q.field)] || { say: () => q.title, why: '' };
+
+// 推荐：返回 { value, reason }；没有把握的（如名称、阈值）返回 null，必须用户自己填
+function recommend(q) {
+  const k = qKey(q.field), name = S.basic.state.name || '';
+  const has = (v) => q.options?.some((o) => o.value === v);
+  if (k === 'category') {
+    const rules = [[/报销|费用|付款|借款|经费|发票/, '财务管理'], [/请假|加班|补卡|出差|外出|调休|休假/, '考勤管理'], [/转正|离职|调岗|入职|招聘|晋升/, '人事管理'], [/用车|用章|用印|领用|采购|报修|会议室|巡检/, '行政管理']];
+    const hit = rules.find(([re]) => re.test(name));
+    return hit ? { value: hit[1], reason: `名称里有「${name.match(hit[0])[0]}」，这类审批通常归到「${hit[1]}」。` } : null;
+  }
+  if (k === 'initiator.scope') return { value: 'all', reason: '大多数审批全员都能发起；只有用章、采购这类敏感审批才需要限制。' };
+  if (k === 'showInWorkbench') return { value: true, reason: '展示后员工在工作台首页就能一键发起，最方便。' };
+  if (k === 'discovery') return { value: q.options.slice(0, 6).map((o) => o.value), reason: '这是该类审批最常见的字段，先全选，之后嫌多可以去掉。' };
+  if (k === 'required') {
+    const v = q.options.filter((o) => /事由|原因|金额|日期|时间|类型|明细|姓名|控件/.test(o.label)).map((o) => o.value);
+    return v.length ? { value: v, reason: '事由、金额、日期、类型这类核心信息建议必填；备注、附件可以选填。' } : null;
+  }
+  if (k === 'flow.nodes') return { value: q.options[0]?.value, reason: '这是 AI 认为最贴合该审批的做法，可以先选它，之后随时调整。' };
+  if (k === 'type') {
+    const f = fieldOf(q.field), l = f?.label || '';
+    const rules = [[/金额|费用|价格|报价|预算/, 'money'], [/天数|数量|人数|次数|个数/, 'number'], [/日期区间|起止|期间/, 'daterange'], [/日期|时间|到货/, 'date'], [/事由|原因|说明|备注|描述|内容/, 'textarea'], [/附件|凭证|发票|证明|文件/, 'attachment'], [/部门/, 'dept'], [/联系人|人员|同行|交接人|负责人|姓名/, 'contact'], [/类型|类别|种类|方式/, 'select'], [/明细/, 'detail']];
+    const hit = rules.find(([re]) => re.test(l));
+    return hit && has(hit[1]) ? { value: hit[1], reason: `「${l}」这类信息通常用「${TYPES[hit[1]]}」。` } : { value: 'text', reason: '拿不准时用「单行文本」最保险。' };
+  }
+  if (k === 'withTime') { const f = fieldOf(q.field); const t = /时间|小时|时刻/.test(f?.label || ''); return { value: t, reason: t ? '名称里有「时间」，建议精确到时分。' : '按天计算足够，员工填起来也更简单。' }; }
+  if (k === 'options') {
+    if (typeof W.aiRec[q.field] === 'object') return W.aiRec[q.field];
+    const f = fieldOf(q.field), l = f?.label || '';
+    const rules = [[/费用|报销|开支/, ['交通', '住宿', '餐饮', '其他']], [/请假|假期|休假/, ['事假', '病假', '年假', '调休']], [/用章|印章|章类/, ['公章', '合同章', '财务章']], [/紧急|优先|级别/, ['一般', '紧急', '非常紧急']], [/付款|支付|结算/, ['银行转账', '现金', '支票']]];
+    const hit = rules.find(([re]) => re.test(l));
+    return hit ? { value: hit[1], reason: `「${l}」常见的选项就是这几个，可以直接用，也可以增减。` } : null;
+  }
+  if (k === 'currency') return { value: 'CNY', reason: '国内业务一般用人民币。' };
+  if (k === 'children') return { value: q.options.slice(0, 3).map((o) => o.value), reason: '这是明细里最常见的几列。' };
+  if (k === 'approver') return { value: 'manager', reason: '第一级由直属上级把关，是最常见的做法，不用写人名，人员变动也不怕。' };
+  if (k === 'conditions') { const m = ctx().form.find((f) => f.type === 'money') || ctx().form[0]; return m ? { value: m.id, reason: `用「${m.label}」来判断最常见：金额大小决定要不要加一级审批。` } : null; }
+  if (k === 'op') return { value: 'gt', reason: '「超过某个数就升级审批」最常用。' };
+  if (q.defaultValue !== undefined) return { value: q.defaultValue, reason: '后台默认值，适用于大多数场景。' };
+  return null;
+}
+const sameVal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+/* =====================================================================
+   向导引擎：一次只问一题
+   ===================================================================== */
+const STEPS = [{ k: 'basic', n: '基础信息', mins: 1 }, { k: 'form', n: '表单字段', mins: 2 }, { k: 'flow', n: '审批流程', mins: 2 }, { k: 'review', n: '确认发布', mins: 1 }];
+let W;
+const wzFresh = () => ({ step: 'basic', phase: 'intro', res: null, q: null, ans: {}, hist: [], started: {}, done: { basic: false, form: false, flow: false }, note: '', pv: 'basic', touched: [], helpTxt: '', busy: false, aiRec: {} });
+
+function snap() { return { basic: clone(S.basic.state), form: clone(S.form.state), flow: clone(S.flow.state), m: { basic: clone(S.basic.missing || []), form: clone(S.form.missing || []), flow: clone(S.flow.missing || []) }, done: clone(W.done) }; }
+function restore(p) { S.basic.state = p.basic; S.form.state = p.form; S.flow.state = p.flow; for (const k of ['basic', 'form', 'flow']) S[k].missing = p.m[k]; W.done = p.done; }
+
+function wzStart() {
+  S.basic.state = clone(meta.caps.approvalBasic.empty); S.form.state = clone(meta.caps.approvalForm.empty); S.flow.state = clone(meta.caps.approvalFlow.empty);
+  for (const k of ['basic', 'form', 'flow']) S[k].missing = [];
+  W = wzFresh(); document.body.classList.add('wz'); renderAll();
+}
+const wzExit = () => { document.body.classList.remove('wz'); renderList(); };
+
+function enterStep(k) {
+  W.step = k; W.q = null; W.note = ''; W.helpTxt = ''; W.pv = k === 'review' ? 'basic' : k;
+  if (k === 'review') { W.phase = 'review'; return renderAll(); }
+  if (W.started[k]) return resume(k);
+  W.phase = 'intro'; renderAll();
+}
+async function beginStep(k) {
+  W.started[k] = true; W.phase = 'loading'; renderAll();
+  let res;
+  if (k === 'basic') res = await api('/api/answer', S.basic, { answers: {} });
+  else res = await api('/api/chat', S[k], { messages: [{ role: 'user', content: k === 'form' ? '开始设计表单，请先告诉我这个审批通常需要收集哪些信息' : '开始配置流程，请先给我几个流程方案' }] });
+  present(res, true);
+}
+async function resume(k) { W.phase = 'loading'; renderAll(); present(await api('/api/answer', S[k], { answers: {} }), true); }
+
+// 把服务端结果落地并挑出下一题
+function present(res, fromChat) {
+  const k = W.step;
+  if (res.status === 'error') { W.phase = 'q'; W.note = res.reply; return renderAll(); }
+  if (res.changed) { S[k].state = res.next; W.touched = res.touched; if (!fromChat) W.note = '已记下：' + (res.rows.length > 3 ? `${res.rows.length} 项变更` : res.rows.map((r) => `${r.label}${r.new ? ' ' + r.new : ''}`).join('；')); }
+  S[k].missing = res.missing; W.res = res;
+  if (res.errors?.length) W.note = '⚠ ' + res.errors.join('；');
+  const vis = (q) => !q.dependsOn || q.dependsOn.current === q.dependsOn.equals;
+  const q = res.questions.filter(vis).find((x) => x.field !== 'confirm');
+  if (q) { W.q = q; W.phase = 'q'; W.ans = {}; if (q.kind === 'multi' && q.selected?.length) W.ans[q.field] = [...q.selected]; }
+  else { W.q = null; W.phase = 'summary'; }
+  W.pv = k; renderAll();
+}
+
+async function submit(answers) {
+  if (W.busy) return; W.busy = true;
+  W.hist.push({ snap: snap(), res: W.res, step: W.step });
+  const k = W.step;
+  const res = await api('/api/answer', S[k], { answers });
+  W.busy = false; present(res, false);
+}
+function back() {
+  const h = W.hist.pop(); if (!h) return;
+  restore(h.snap); W.step = h.step; W.note = ''; present(h.res, true);
+}
+async function reask(path) {
+  W.step = 'basic'; W.phase = 'loading'; renderAll();
+  present(await api('/api/answer', S.basic, { answers: {}, reask: [path] }), true);
+}
+async function confirmStep() {
+  const k = W.step;
+  if (k !== 'basic') { const r = await api('/api/answer', S[k], { answers: { confirm: 'yes' } }); S[k].state = r.next; S[k].missing = r.missing; }
+  W.done[k] = true; W.hist = [];
+  const nxt = ['basic', 'form', 'flow'].find((x) => !W.done[x]);
+  enterStep(nxt || 'review');
+}
+// 「快速完成本步」：沿用 AI 推荐，直到遇到必须由用户回答的问题
+async function autoStep() {
+  W.busy = true; let guard = 0, n = 0;
+  while (W.q && guard++ < 40) {
+    const rec = recommend(W.q);
+    if (!rec || rec.value === undefined || (Array.isArray(rec.value) && !rec.value.length)) break;
+    const field = W.q.field;
+    W.hist.push({ snap: snap(), res: W.res, step: W.step });
+    const res = await api('/api/answer', S[W.step], { answers: { [field]: rec.value } });
+    n++; present(res, false);
+    if (!W.q) break;
+  }
+  W.busy = false; W.note = n ? `已按推荐帮你完成 ${n} 项${W.q ? '，下面这题需要你自己定' : ''}。` : ''; renderAll();
+}
+async function nlAdd(text) {
+  const k = W.step; if (!text.trim()) return;
+  W.phase = 'loading'; renderAll();
+  const res = await api('/api/chat', S[k], { messages: [{ role: 'user', content: text }] });
+  present(res, false);
+}
+
+/* =====================================================================
+   渲染：进度 / 中间 / 预览
+   ===================================================================== */
+function railItems() {
+  const b = S.basic.state, f = S.form.state, fl = S.flow.state, mf = S.form.missing || [], mfl = S.flow.missing || [];
+  const approvals = (function c(l) { return l.reduce((a, n) => a + (n.kind === 'approval' ? 1 : 0) + (n.kind === 'branch' ? n.branches.reduce((x, y) => x + c(y.nodes), 0) + c(n.def.nodes) : 0), 0); })(fl.nodes);
+  return {
+    basic: [{ t: '名称', d: !!b.name, p: 'name' }, { t: '分组', d: !!b.category, p: 'category' }, { t: '谁可以发起', d: !!b.initiator && (b.initiator.scope === 'all' || b.initiator.members.length > 0), p: 'initiator.scope' }, { t: '工作台展示', d: typeof b.showInWorkbench === 'boolean', p: 'showInWorkbench' }],
+    form: [{ t: '选择要收集的信息', d: f.fields.length > 0 }, { t: '确认每个字段怎么填', d: f.fields.length > 0 && !mf.some((m) => /\.(type|options|withTime|currency|children)$/.test(m)) }, { t: '设置哪些必填', d: f.fields.length > 0 && !mf.some((m) => m.endsWith('.required')) }, { t: '确认字段已齐', d: W.done.form }],
+    flow: [{ t: '选择流程方案', d: approvals > 0 }, { t: '确认审批规则', d: approvals > 0 && !mfl.some((m) => !/^(flow\.|confirmed)/.test(m)) }, { t: '全局规则', d: !!fl.repeatApprover }, { t: '确认流程完整', d: W.done.flow }],
+    review: [{ t: '检查并发布', d: false }],
+  };
+}
+function renderRail() {
+  const items = railItems(); let total = 0, done = 0;
+  $('#rail').innerHTML = STEPS.map((s, i) => {
+    const its = items[s.k], dn = s.k === 'review' ? false : W.done[s.k];
+    const cur = W.step === s.k;
+    its.forEach((x) => { if (s.k !== 'review') { total++; if (x.d) done++; } });
+    const curIdx = cur && W.phase === 'q' && W.q ? its.findIndex((x) => !x.d) : -1;
+    return `<div class="rs ${dn ? 'ok' : cur ? 'on' : ''}"><div class="h"><span class="dot">${dn ? '✓' : i + 1}</span>${s.n}${cur ? '' : s.k !== 'review' && !dn && W.started[s.k] ? '<span style="font-weight:400;font-size:12px;color:var(--warn)"> 进行中</span>' : ''}</div>
+      <ul>${its.map((x, j) => `<li class="${x.d ? 'd' : ''} ${cur && j === curIdx ? 'cur' : ''} ${x.p && x.d ? 'rk' : ''}" ${x.p && x.d ? `data-p="${x.p}" title="点击修改这一项"` : ''}><i>${x.d ? '✓' : cur && j === curIdx ? '●' : '○'}</i>${x.t}</li>`).join('')}</ul></div>`;
+  }).join('');
+  $('#rail').querySelectorAll('[data-p]').forEach((li) => (li.onclick = () => reask(li.dataset.p)));
+  const pct = total ? Math.round(done / total * 100) : 0;
+  $('#pg-b').style.width = pct + '%';
+  const left = STEPS.filter((s) => s.k !== 'review' && !W.done[s.k]).reduce((a, s) => a + s.mins, 0) + 1;
+  $('#pg-t').textContent = W.step === 'review' ? '最后一步：检查并发布' : `已完成 ${done}/${total} 项 · 预计还需约 ${left} 分钟`;
+}
+
+function renderCenter() {
+  const c = $('#ctr'), st = STEPS.find((s) => s.k === W.step), idx = STEPS.indexOf(st);
+  const note = W.note ? `<div class="bub" style="margin-bottom:12px;max-width:none"><div class="nt">${esc(W.note)}</div></div>` : '';
+  if (W.phase === 'loading') { c.innerHTML = `<div class="coach"><div class="av">✨</div><div class="bub"><span class="spin"></span>${W.step === 'basic' ? '正在准备…' : '正在根据你的审批，为你准备推荐…'}</div></div>`; return; }
+
+  if (W.phase === 'intro') {
+    const intro = {
+      basic: { t: '先给审批起个名字，定好归属', say: '你好！我来带你一步步把审批创建好。不会配置也没关系，每一步我都会告诉你为什么要这样设置，并给出推荐。', list: [['起个名字', '员工在工作台看到的就是它'], ['选分组', '决定它放在列表的哪一栏'], ['谁可以发起', '全员，还是只限几个人'], ['要不要放到工作台', '放了员工一键就能发起']] },
+      form: { t: '决定员工要填哪些信息', say: `第 1 步完成啦 🎉 接下来设计「${nm()}」的表单。我会根据这个审批推荐常见字段，你勾选需要的就行。`, list: [['勾选要收集的信息', '我先推荐，你选'], ['逐个确认怎么填', '类型、选项、日期格式…我会逐个讲清楚'], ['设置哪些必填', '核心信息建议必填'], ['确认字段已齐', '最后再看一遍']] },
+      flow: { t: '决定谁来审批、怎么流转', say: `表单搞定 🎉 最后来设计「${nm()}」的审批流程。我先给几个常见方案，你选最接近的一个。`, list: [['选一个流程方案', '作为起点，之后能改'], ['确认审批规则', '谁审批、找不到人怎么办…逐项问你'], ['全局规则', '同一个人出现多次怎么办'], ['确认流程完整', '最后再看一遍']] },
+    }[W.step];
+    c.innerHTML = `<div class="coach"><div class="av">✨</div><div class="bub">${esc(intro.say)}</div></div>
+      <div class="stepcard"><span class="stag">第 ${idx + 1} 步 / 共 3 步</span><h2>${intro.t}</h2><div class="sub2">${st.n}</div>
+      <ul class="todo">${intro.list.map(([a, b], i) => `<li data-n="${i + 1}"><b>${a}</b><small>${b}</small></li>`).join('')}</ul>
+      <div class="est">⏱ 预计约 ${st.mins} 分钟 · 随时可以点「上一题」回头修改</div>
+      <button class="p" id="go">开始</button></div>`;
+    $('#go').onclick = () => beginStep(W.step); return;
+  }
+
+  if (W.phase === 'q') {
+    const q = W.q; if (!q) { c.innerHTML = note || ''; return; }
+    const co = coachOf(q), rec = recommend(q);
+    const items = railItems()[W.step], qi = items.filter((x) => x.d).length + 1;
+    const multi = q.kind === 'multi', isTxt = ['text', 'number', 'list'].includes(q.kind);
+    const isRec = (v) => rec && (Array.isArray(rec.value) ? rec.value.includes(v) : sameVal(rec.value, v));
+    let controls = '';
+    if (isTxt) {
+      const pre = W.step === 'basic' && q.field === 'name' ? S.basic.state.name : '';
+      controls = q.kind === 'list' ? `<textarea id="in" placeholder="${esc(qKey(q.field) === 'options' ? '用顿号或换行隔开，至少 2 项' : (q.placeholder || ''))}"></textarea>` : `<input id="in" type="${q.kind === 'number' ? 'number' : 'text'}" ${q.kind === 'number' ? 'step="any"' : ''} placeholder="${esc(q.placeholder || '')}" maxlength="${q.maxLength || 100}" value="${esc(pre || '')}">`;
+    } else {
+      controls = `<div class="ogrid ${q.options.length > 6 || q.options.some((o) => (o.label + (o.hint || '')).length > 22) ? 'one' : ''}">${q.options.map((o, i) => `<div class="oc" data-i="${i}"><b>${esc(o.label)}</b>${isRec(o.value) ? '<span class="rec">✨ 推荐</span>' : ''}${o.hint ? `<small>${esc(o.hint)}</small>` : ''}</div>`).join('')}</div>`;
+      if (q.allowCustom) controls += `<input id="cu" type="text" style="margin-top:10px" placeholder="没有想要的？在这里补充其他（用顿号分隔）">`;
+    }
+    c.innerHTML = `<div style="margin-bottom:10px"><span class="stag">第 ${idx + 1} 步 · ${st.n}</span><span class="qn">第 ${Math.min(qi, items.length)} / ${items.length} 项</span></div>
+      <div class="coach"><div class="av">✨</div><div class="bub">${note ? `<div class="nt">${esc(W.note)}</div>` : ''}${esc(co.say())}</div></div>
+      <div class="qcard"><h3>${esc(q.title)}</h3>${q.hint ? `<div class="qhint">${esc(q.hint)}</div>` : ''}${q.reason ? `<div class="qreason">⚠ ${esc(q.reason)}</div>` : ''}
+        ${controls}
+        ${rec?.reason ? `<div class="recline">✨ <b>AI 推荐：</b>${esc(rec.reason)}</div>` : ''}
+        ${co.why ? `<details class="why"><summary>为什么要问这个？</summary><div>${esc(co.why)}${co.ex ? `<div class="ex">${esc(co.ex)}</div>` : ''}</div></details>` : ''}
+        <div class="acts"><button id="bk" ${W.hist.length ? '' : 'disabled'}>‹ 上一题</button>
+          <div class="sp">${rec && rec.value !== undefined ? '<button id="useRec">用推荐的</button>' : ''}${q.allowEmpty ? '<button id="skip">跳过</button>' : ''}<button class="p" id="ok">确认 →</button></div></div>
+      </div>
+      <div class="acts" style="margin-top:12px"><button class="lnk" id="auto">⚡ 嫌麻烦？本步剩下的都用推荐，我只回答必须自己定的</button></div>
+      <div class="helpbox"><div class="lbl">🙋 不太明白？问问 AI（用大白话回答）</div><div class="row"><input id="hq" type="text" placeholder="比如：会签和或签有什么区别？"><button id="hb">问</button></div>${W.helpTxt ? `<div class="ans">${esc(W.helpTxt)}</div>` : ''}</div>`;
+    wireQuestion(q, rec, multi, isTxt, co);
+    if (qKey(q.field) === 'options' && !rec) aiOptionsRec(q);
+    return;
+  }
+
+  if (W.phase === 'summary') { c.innerHTML = summaryHtml(note, idx); wireSummary(); return; }
+  if (W.phase === 'review') { c.innerHTML = reviewHtml(); wireReview(); }
+}
+
+function wireQuestion(q, rec, multi, isTxt, co) {
+  const c = $('#ctr'); const ans = W.ans;
+  const setSel = () => c.querySelectorAll('.oc').forEach((o, i) => { const v = q.options[i].value; o.classList.toggle('sel', multi ? (ans[q.field] || []).some((x) => sameVal(x, v)) : sameVal(ans[q.field], v)); });
+  const valid = () => {
+    if (q.allowEmpty) return true;
+    if (isTxt) { const t = ($('#in').value || '').trim(); return !!t; }
+    if (multi) return (ans[q.field] || []).length > 0 || ((c.querySelector('#cu')?.value || '').trim() !== '');
+    return ans[q.field] !== undefined;
+  };
+  const sync = () => { $('#ok').disabled = !valid(); };
+  if (!isTxt) {
+    c.querySelectorAll('.oc').forEach((o, i) => (o.onclick = () => {
+      const v = q.options[i].value;
+      if (multi) { const a = (ans[q.field] ||= []); const j = a.findIndex((x) => sameVal(x, v)); j < 0 ? a.push(v) : a.splice(j, 1); setSel(); sync(); }
+      else { ans[q.field] = v; setSel(); sync(); if (!q.allowCustom) setTimeout(go, 220); }     // 单选：点一下自动进入下一题
+    }));
+    setSel(); c.querySelector('#cu')?.addEventListener('input', sync);
+  } else {
+    const inp = $('#in'); inp.addEventListener('input', sync); inp.focus();
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && q.kind !== 'list' && !$('#ok').disabled) go(); });
+  }
+  function collect() {
+    const out = {};
+    if (isTxt) { const t = $('#in').value.trim(); if (!t) return out; out[q.field] = q.kind === 'number' ? Number(t) : q.kind === 'list' ? split(t) : t; }
+    else if (multi) { out[q.field] = ans[q.field] || []; } else if (ans[q.field] !== undefined) out[q.field] = ans[q.field];
+    const cu = c.querySelector('#cu'); if (cu && cu.value.trim()) out[q.field + '.custom'] = split(cu.value);
+    return out;
+  }
+  function go() { if (!valid()) return; const a = collect(); if (isTxt && q.kind === 'number' && !isFinite(a[q.field])) return; submit(a); }
+  sync();
+  $('#ok').onclick = go;
+  $('#bk').onclick = back;
+  $('#skip') && ($('#skip').onclick = () => submit({ [q.field]: multi ? [] : undefined }));
+  $('#useRec') && ($('#useRec').onclick = () => {      // 选中推荐项，由用户再点「确认」，保持是用户自己的决定
+    if (isTxt) { $('#in').value = Array.isArray(rec.value) ? rec.value.join('、') : rec.value; } else { ans[q.field] = multi ? [...rec.value] : rec.value; setSel(); }
+    sync(); $('#ok').focus();
+  });
+  $('#auto').onclick = autoStep;
+  const ask = async () => {
+    const t = $('#hq').value.trim(); if (!t) return;
+    W.helpTxt = '思考中…'; $('#hb').disabled = true; renderCenter();
+    const r = await post('/api/help', { step: STEPS.find((s) => s.k === W.step).n, title: q.title, options: q.options?.map((o) => o.label), text: t, context: ctx() }).catch(() => ({}));
+    W.helpTxt = r.reply || ('（离线讲解）' + (co.why || '这一项按你们的实际情况选择即可。'));
+    renderCenter();
+  };
+  $('#hb').onclick = ask; $('#hq').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
+}
+
+// 没法硬编码推荐的「选项」题：让 AI 按字段名现场给一组常见选项（仍由用户点「用推荐的」→「确认」）
+async function aiOptionsRec(q) {
+  if (meta.provider === 'mock' || W.aiRec[q.field] === 'loading') return;
+  W.aiRec[q.field] = 'loading';
+  const f = fieldOf(q.field), label = f?.label || '';
+  const slot = $('#ctr .qcard'); slot && slot.insertAdjacentHTML('beforeend', '<div class="recline" id="airec"><span class="spin"></span>AI 正在为「' + esc(label) + '」想几个常见选项…</div>');
+  try {
+    const r = await post('/api/help', { step: '表单字段', title: q.title, text: `请直接列出审批表单里「${label}」这个单选字段最常见的 3~6 个选项，只回答用顿号分隔的选项本身，不要任何解释。`, context: ctx() });
+    const arr = split(String(r.reply || '')).map((x) => x.replace(/[。.；;：:「」]/g, '')).filter((x) => x && x.length <= 10);
+    if (arr.length >= 2 && arr.length <= 8) W.aiRec[q.field] = { value: arr, reason: `AI 根据「${label}」想到的常见选项，可以直接用，也可以增减。` }; else delete W.aiRec[q.field];
+  } catch { delete W.aiRec[q.field]; }
+  if (W.q && W.q.field === q.field && W.phase === 'q') { renderCenter(); }
+  else $('#airec')?.remove();
+}
+
+/* ---- 每步小结 ---- */
+function outline(list, names) {
+  if (!list.length) return '<span style="color:var(--sub)">（无）</span>';
+  const line = (n) => n.kind === 'approval' ? `<span class="pill ap">审批</span>${esc(ptext(n.approver))}` : `<span class="pill nt">抄送</span>${esc(n.recipients.map(ptext).join('；') || '待确认')}`;
+  return `<ul class="ol">${list.map((n) => n.kind === 'branch' ? `<li><span class="pill fx">条件分支</span><ul>${n.branches.map((b) => `<li><span class="b2">${esc(names[b.id])}</span>：${esc(b.groups.length ? b.groups.map((g) => g.map(condText).join(' 且 ')).join(' 或 ') : '条件待确认')} →${b.nodes.length ? outline(b.nodes, names) : ' 继续往下'}</li>`).join('')}<li><span class="b2">其他情况</span> →${n.def.nodes.length ? outline(n.def.nodes, names) : ' 继续往下'}</li></ul></li>` : `<li>${line(n)}</li>`).join('')}</ul>`;
+}
+const basicKV = () => { const b = S.basic.state; return [['名称', b.name || '待确认'], ['分组', b.category || '待确认'], ['谁可以发起', b.initiator ? (b.initiator.scope === 'all' ? '全员' : '指定人员：' + b.initiator.members.join('、')) : '待确认'], ['工作台展示', b.showInWorkbench == null ? '待确认' : b.showInWorkbench ? '展示' : '不展示']]; };
+const formChips = () => { const fs = S.form.state.fields; return fs.length ? `<div class="fch">${fs.map((f) => `<span>${esc(f.label)}${f.required === true ? '<i> *</i>' : ''}<small>${f.type ? TYPES[f.type] : '待确认'}${f.type === 'detail' && f.children.length ? '：' + esc(f.children.map((c) => c.label).join('/')) : ''}</small></span>`).join('')}</div>` : '<span style="color:var(--sub)">（暂无）</span>'; };
+function summaryHtml(note, idx) {
+  const k = W.step, nextName = { basic: '设计表单', form: '配置流程', flow: '检查并发布' }[k];
+  const body = k === 'basic' ? `<dl class="kv">${basicKV().map(([a, b]) => `<dt>${a}</dt><dd>${esc(b)}</dd>`).join('')}</dl>` : k === 'form' ? formChips() : `<ul class="ol"><li><span class="pill fx">发起</span>${esc(S.basic.state.initiator?.scope === 'all' ? '全员可发起' : '指定人员')}</li></ul>${outline(S.flow.state.nodes, flowNames(S.flow.state))}<ul class="ol"><li><span class="pill fx">结束</span></li></ul>`;
+  const say = { basic: '基础信息都确认好了，看一下对不对：', form: '字段都确认好了。想起还有别的要收集的，现在可以补充：', flow: '流程都确认好了，最后看一眼：' }[k];
+  const addBox = k !== 'basic' ? `<div class="addbox"><input id="nl" type="text" placeholder="${k === 'form' ? '还想加字段？直接说，如：加上 请假天数（数字）' : '想调整流程？直接说，如：再加一级总经理审批'}"><button id="nlb">添加</button></div>` : '';
+  const hist = W.hist.length ? '<button id="bk">‹ 上一题</button>' : '';
+  return `<div style="margin-bottom:10px"><span class="stag">第 ${idx + 1} 步 · ${STEPS[idx].n}</span><span class="qn">本步完成 ✓</span></div>
+    <div class="coach"><div class="av">✨</div><div class="bub">${note ? `<div class="nt">${esc(W.note)}</div>` : ''}${say}</div></div>
+    <div class="sumcard"><h4>${STEPS[idx].n}</h4>${body}${addBox}</div>
+    <div class="acts">${hist}<div class="sp"><button class="p" id="nx">没问题，继续：${nextName} →</button></div></div>
+    <div class="helpbox"><div class="lbl">想改某一项？点左侧进度里已完成的条目即可${k !== 'basic' ? '；或直接在上面的输入框说' : ''}。</div></div>`;
+}
+function wireSummary() {
+  $('#nx').onclick = confirmStep; $('#bk') && ($('#bk').onclick = back);
+  const nl = $('#nl'); if (nl) { const go = () => nlAdd(nl.value); $('#nlb').onclick = go; nl.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); }); }
+}
+
+/* ---- 最终检查 ---- */
+function reviewHtml() {
+  const miss = ['basic', 'form', 'flow'].reduce((a, k) => a + (S[k].missing || []).filter((m) => m !== 'confirmed').length, 0);
+  return `<div class="coach"><div class="av">✨</div><div class="bub">全部完成啦 🎉 最后检查一下整体方案，没问题就可以发布。右边的预览也能切换着看。</div></div>
+    ${miss ? `<div class="warnbox">还有 ${miss} 项必填信息没有确认，请先回到对应步骤补全。</div>` : ''}
+    <div class="sumcard"><h4>基础信息</h4><dl class="kv">${basicKV().map(([a, b]) => `<dt>${a}</dt><dd>${esc(b)}</dd>`).join('')}</dl></div>
+    <div class="sumcard"><h4>表单字段（${S.form.state.fields.length}）</h4>${formChips()}</div>
+    <div class="sumcard"><h4>审批流程</h4><ul class="ol"><li><span class="pill fx">发起</span>${esc(S.basic.state.initiator?.scope === 'all' ? '全员可发起' : '指定人员')}</li></ul>${outline(S.flow.state.nodes, flowNames(S.flow.state))}<ul class="ol"><li><span class="pill fx">结束</span></li></ul></div>
+    <div class="acts"><button id="rb">‹ 回去改改</button><div class="sp"><button id="sv">保存为草稿</button><button class="p" id="pub" ${miss ? 'disabled' : ''}>发布</button></div></div>`;
+}
+function wireReview() {
+  $('#rb').onclick = () => { W.done.flow = false; enterStep('flow'); };
+  const finish = (pub) => {
+    const b = S.basic.state; const d = { id: Date.now(), published: pub, updated: nowStr(), state: { basic: clone(b), form: clone(S.form.state), flow: clone(S.flow.state) } };
+    DRAFTS.unshift(d); listCat = b.category || listCat; wzExit(); toast(pub ? '已发布（demo：此处对接后台发布接口）' : '已保存为草稿');
+  };
+  $('#sv').onclick = () => finish(false); $('#pub').onclick = () => finish(true);
+}
+
+/* =====================================================================
+   预览（右侧，实时）
+   ===================================================================== */
+const PERSON = { members: '指定成员', self: '发起人自己', role: '职务角色', manager: '直属上级', deptHead: '部门负责人' };
+const FATTR = { approver: '审批人', 'approver.members': '审批人员', 'approver.role': '职务角色', emptyApprover: '审批人为空时', emptyMembers: '空审批人处理人', multiMode: '多人审批方式', sameAsSubmitter: '与提交人同一人时', recipients: '抄送人', conditions: '条件', field: '条件字段', op: '运算符', value: '条件值' };
+const COPS = { eq: '等于', lt: '小于', lte: '小于等于', gt: '大于', gte: '大于等于', neq: '不等于', in: '属于' };
+const EMPTY = { autoPass: '自动通过', specified: '指定人员审批', admin: '转交模板管理员' }, MULTI = { all: '会签', any: '或签' }, SAME = { self: '提交人自己审批', skip: '自动跳过', manager: '转交直属上级', deptHead: '转交部门负责人' };
+const ptext = (p) => !p ? '待确认' : p.type === 'members' ? (p.members.join('、') || '成员待选') : p.type === 'role' ? `${p.role || '角色待选'}` : PERSON[p.type];
+function flowNames(st) {
+  const m = {}; let a = 0, nf = 0, bn = 0, br = 0;
+  const v = (list) => list.forEach((n) => {
+    if (n.kind === 'approval') m[n.id] = n.name || `审批${++a}`;
+    else if (n.kind === 'notify') m[n.id] = n.name || `通知${++nf}`;
+    else { m[n.id] = n.name || `条件分支节点${++bn}`; n.branches.forEach((b) => { m[b.id] = b.name || `条件分支${++br}`; v(b.nodes); }); v(n.def.nodes); }
+  });
+  v(st.nodes); return m;
+}
+const fieldLabel = (id) => id === 'initiator.dept' ? '发起人所在部门' : id === 'initiator.role' ? '发起人的角色' : (S.form.state.fields.find((f) => f.id === id)?.label || '字段待确认');
+const condText = (c) => `${fieldLabel(c.field)} ${COPS[c.op] || '运算符待确认'} ${c.value == null ? '待确认' : Array.isArray(c.value) ? c.value.join('、') : c.value}`;
+const range = (f) => (f.min != null || f.max != null ? ` <small>范围 ${f.min ?? '-∞'} ~ ${f.max ?? '+∞'}</small>` : '');
+function preview(f) {
+  const o = f.options || [], sub = (t) => `<div class="pv in">${t}</div>`;
+  switch (f.type) {
+    case null: return '<div class="pv dim">类型待确认</div>';
+    case 'text': return sub(esc(f.placeholder || '请输入'));
+    case 'textarea': return `<div class="pv in tall">${esc(f.placeholder || '请输入')}</div>`;
+    case 'number': return sub(esc(f.placeholder || '请输入') + (f.unit ? ` <small>${esc(f.unit)}</small>` : '') + range(f));
+    case 'money': return sub(f.currency ? `${SYM[f.currency]} ${esc(f.placeholder || '0.00')} <small>${f.currency}</small>${range(f)}` : '币种待确认');
+    case 'select': return sub(o.length ? esc(o.join(' ／ ')) : '选项待确认');
+    case 'multiselect': return o.length ? `<div class="chips">${o.map((x) => `<span class="chip">${esc(x)}</span>`).join('')}</div>` : sub('选项待确认');
+    case 'date': return sub(f.withTime == null ? '日期格式待确认' : f.withTime ? '年-月-日 时:分' : '年-月-日');
+    case 'daterange': return sub(f.withTime == null ? '日期格式待确认' : f.withTime ? '年-月-日 时:分 ~ 年-月-日 时:分' : '年-月-日 ~ 年-月-日');
+    case 'contact': return sub('选择联系人'); case 'bank': return sub('选择银行账户'); case 'image': return sub('＋ 上传图片'); case 'dept': return sub('选择部门'); case 'attachment': return sub('＋ 上传附件');
+    case 'leave': case 'punchfix': case 'overtime': return `<div class="pv dim">系统控件组：自动同步${{ leave: '假期类型与余额', punchfix: '可补卡时间范围', overtime: '加班时长至调休假' }[f.type]}</div>`;
+    case 'detail': return `<div class="sub">${f.children.length ? f.children.map((c) => `<div class="li"><b>${esc(c.label)}</b><span class="tag">${c.type ? TYPES[c.type] : '类型待确认'}</span>${c.required === true ? '<i style="color:var(--red)">*</i>' : ''}</div>`).join('') : '<div class="pv dim">明细列待确认</div>'}</div>`;
+  }
+}
+const badge = (f, s) => { const a = (s.missing || []).filter((m) => m.startsWith(f.id + '.')).map((m) => ATTR[m.slice(f.id.length + 1)]).filter(Boolean); return a.length ? `<span class="bd">待确认：${a.join('、')}</span>` : ''; };
+function flowBadges(miss, match) {
+  const labels = uniq(miss.filter(match).map((m) => { const r = m.slice(m.indexOf('.') + 1).replace(/\.\d+\./, '.').replace(/^recipients\.(members|role)$/, (x, y) => (y === 'members' ? 'approver.members' : 'approver.role')); return FATTR[r]; }).filter(Boolean));
+  return labels.length ? `<span class="bd">待确认：${labels.join('、')}</span>` : '';
+}
+function pvBasic() {
+  const b = S.basic.state, rows = [['名称', b.name], ['分组', b.category], ['谁可以发起', b.initiator ? (b.initiator.scope === 'all' ? '全员' : '指定人员：' + b.initiator.members.join('、')) : null], ['工作台展示', b.showInWorkbench == null ? null : b.showInWorkbench ? '展示' : '不展示']];
+  return `<div class="card2"><dl class="kv" style="grid-template-columns:90px 1fr;gap:8px 8px">${rows.map(([k, v], i) => `<dt>${k}</dt><dd data-id="b${i}" style="${v ? '' : 'color:#c0c4cc'}">${v ? esc(v) : '待填写'}</dd>`).join('')}</dl></div>`;
+}
+function pvForm() {
+  const fs = S.form.state.fields, s = S.form;
+  return fs.length ? fs.map((f) => `<div class="fc ${(s.missing || []).some((m) => m.startsWith(f.id + '.')) ? 'miss' : ''}" data-id="${f.id}"><div class="hd"><b>${esc(f.label)}</b>${f.required === true ? '<i>*</i>' : f.required === false ? '<span class="tag">选填</span>' : ''}<span class="tag">${f.type ? TYPES[f.type] : '类型待确认'}</span>${badge(f, s)}</div>${preview(f)}</div>`).join('') : '<div class="empty">员工要填的字段会出现在这里</div>';
+}
+function pvFlow() {
+  const st = S.flow.state, miss = S.flow.missing || [], names = flowNames(st), b = S.basic.state;
+  const init = !b.initiator ? '发起人待确认' : b.initiator.scope === 'all' ? '全员可发起' : '指定人员：' + b.initiator.members.join('、');
+  const card = (n) => { const mine = miss.some((m) => m.startsWith(n.id + '.')); const body = n.kind === 'approval' ? `审批人：${esc(ptext(n.approver))}${n.approver ? `<br><small>${[n.emptyApprover && '为空：' + EMPTY[n.emptyApprover], n.multiMode && MULTI[n.multiMode], n.sameAsSubmitter && '同一人：' + SAME[n.sameAsSubmitter]].filter(Boolean).join(' · ')}</small>` : ''}` : `抄送：${esc(n.recipients.map(ptext).join('；') || '待确认')}`; return `<div class="nd ${n.kind} ${mine ? 'miss' : ''}" data-id="${n.id}"><div class="nh">${n.kind === 'approval' ? '审批' : '通知'} · ${esc(names[n.id])}</div><div class="nb">${body}${flowBadges(miss, (m) => m.startsWith(n.id + '.'))}</div></div>`; };
+  const chain = (list) => list.map((n) => '<div class="con"></div>' + (n.kind === 'branch' ? branch(n) : card(n))).join('');
+  const branch = (n) => `<div style="width:100%"><div class="brn-t" style="text-align:center">${esc(names[n.id])}：按条件分流</div><div class="brn">${n.branches.map((br) => `<div class="brc"><div class="nd cond ${miss.some((m) => m.startsWith(br.id + '.') || br.groups.some((g) => g.some((c) => m.startsWith(c.id + '.')))) ? 'miss' : ''}" data-id="${br.id}"><div class="nh">${esc(names[br.id])}</div><div class="nb">${br.groups.length ? br.groups.map((g) => g.map((c) => esc(condText(c))).join('<br>且 ')).join('<br>或 ') : '条件待确认'}${flowBadges(miss, (m) => m.startsWith(br.id + '.') || br.groups.some((g) => g.some((c) => m.startsWith(c.id + '.'))))}</div></div>${chain(br.nodes)}</div>`).join('')}<div class="brc"><div class="nd def"><div class="nh">其他情况</div><div class="nb"><small>不满足条件时</small></div></div>${chain(n.def.nodes)}</div></div></div>`;
+  return `<div class="fl"><div class="nd fixed"><div class="nh">发起</div><div class="nb">${esc(init)}</div></div>${chain(st.nodes)}<div class="con"></div><div class="nd fixed"><div class="nh">结束</div><div class="nb"><small>流程结束</small></div></div></div>`;
+}
+function renderPreview() {
+  document.querySelectorAll('.pvh span').forEach((s) => s.classList.toggle('on', s.dataset.t === W.pv));
+  $('#pvb').innerHTML = W.pv === 'basic' ? pvBasic() : W.pv === 'form' ? pvForm() : pvFlow();
+  (W.touched || []).forEach((id) => { const e = $(`#pvb [data-id="${id.split('_')[0]}"]`); if (e) { e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); } });
+  W.touched = [];
+}
+document.querySelectorAll('.pvh span').forEach((s) => (s.onclick = () => { W.pv = s.dataset.t; renderPreview(); }));
+function renderAll() { renderRail(); renderCenter(); renderPreview(); $('#ctr').parentElement.scrollTop = 0; }
+
+$('#wz-new').onclick = wzStart; $('#wz-exit').onclick = () => { if (!W.started.basic || confirm('退出引导？当前填写的内容不会保存。')) wzExit(); };
+
+(async () => {
+  meta = await (await fetch('/api/meta')).json();
+  $('#prov').textContent = { deepseek: 'DeepSeek', claude: 'Claude', qwen: '百炼 Qwen', mock: '离线规则模式' }[meta.provider];
+  renderList();
+})();
+</script>
+</body>
+</html>

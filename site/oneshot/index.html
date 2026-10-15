@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="../shared/engine.browser.js"></script>
+<script src="../shared/api-shim.js"></script>
+<title>蜂巢管理平台 · AI 搭建审批 Demo</title>
+<style>
+:root{--blue:#3370ff;--bg:#f5f6f7;--line:#dee0e3;--text:#1f2329;--sub:#646a73;--ok:#00b42a;--warn:#ff7d00;--red:#f54a45}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 -apple-system,"PingFang SC",sans-serif;color:var(--text);background:var(--bg);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+button{font:inherit;border-radius:6px;padding:6px 16px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--text)}
+button.p{background:var(--blue);border-color:var(--blue);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+input[type=text],input[type=number],textarea,select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 10px;font:inherit;background:#fff}
+textarea{height:68px;resize:none}
+
+/* ---------- 后台外壳 ---------- */
+header{height:48px;background:linear-gradient(90deg,#3b6cf0,#4d7ff7);color:#fff;display:flex;align-items:center;padding:0 20px;gap:12px;flex:none}
+header .logo{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px}
+header .logo i{width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.9);display:inline-block}
+header .r{margin-left:auto;display:flex;align-items:center;gap:16px;font-size:13px}
+header .prov{font-size:11px;background:rgba(255,255,255,.2);padding:1px 8px;border-radius:10px}
+header .u{display:flex;align-items:center;gap:8px}header .u i{width:26px;height:26px;border-radius:50%;background:#9db6ff;display:inline-block}
+.shell{flex:1;display:flex;min-height:0}
+.sb{width:210px;background:#fff;border-right:1px solid #eef0f2;overflow:auto;padding:10px 0;flex:none;font-size:14px}
+.sb .g{padding:9px 20px;color:var(--text);display:flex;align-items:center;gap:8px}
+.sb .g.on{color:var(--blue)}.sb .s{padding:9px 20px 9px 46px;color:#40454d}.sb .s.on{background:#e8eefd;color:var(--blue);border-radius:6px;margin:0 8px;padding-left:38px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0;transition:padding-right .2s}
+body.dw-narrow .main{padding-right:440px}
+.view{display:none;flex:1;min-height:0;flex-direction:column}.view.on{display:flex}
+
+/* ---------- 列表页 ---------- */
+.lv{padding:16px 20px;overflow:auto;flex:1}
+.lcard{background:#fff;border-radius:8px;padding:22px 26px;min-height:100%}
+.ltop{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.ltop .search{width:300px;position:relative}.ltop .search input{padding-left:30px}
+.ltop .search::before{content:"⌕";position:absolute;left:10px;top:6px;color:#8f959e}
+.ltop .sp{margin-left:auto;display:flex;gap:10px;align-items:center;position:relative}
+.ai-btn{border:1px solid #b9ccff;background:linear-gradient(90deg,#f0f5ff,#f6f0ff);color:#3b5bdb;font-weight:600;position:relative}
+.ai-btn:hover{border-color:var(--blue)}
+.ai-btn .nw{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:10px;line-height:1;border-radius:8px;padding:2px 5px;font-weight:600}
+.coach{position:absolute;top:44px;right:100px;width:240px;background:#1f2329;color:#fff;border-radius:8px;padding:10px 12px;font-size:12.5px;z-index:5;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.coach::before{content:"";position:absolute;top:-6px;right:60px;border:6px solid transparent;border-top:0;border-bottom-color:#1f2329}
+.coach a{color:#9db6ff;cursor:pointer;margin-left:6px}
+.tabs{display:flex;gap:28px;border-bottom:1px solid var(--line);margin-bottom:0}
+.tabs span{padding:8px 2px;cursor:pointer;color:#40454d;font-size:15px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs span.on{color:var(--blue);border-color:var(--blue);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:#f5f6f7;text-align:left;font-weight:400;color:var(--sub);padding:12px 14px}
+td{padding:14px;border-bottom:1px solid #eceef0}
+td.nm{display:flex;align-items:center;gap:12px}
+.ic{width:34px;height:34px;border-radius:8px;background:#ff8a1f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.tg2{font-size:11px;border-radius:4px;padding:0 6px;margin-left:6px}
+.tg2.dr{background:#fff3e8;color:var(--warn)}.tg2.ai{background:#efe9ff;color:#6b3fd4}.tg2.pb{background:#e8ffea;color:#00842a}
+td a{color:var(--blue);cursor:pointer;margin-right:14px}
+tr.new td{background:#f7faff}
+
+/* ---------- 编辑器 ---------- */
+.etop{height:56px;background:#fff;border-bottom:1px solid #eceef0;display:flex;align-items:center;padding:0 20px;gap:16px;flex:none}
+.etop .back{cursor:pointer;font-size:18px;color:var(--sub);padding:0 4px}
+.etop .tt b{font-size:15px}.etop .tt small{display:block;color:var(--sub);font-size:12px;line-height:1.2}
+.est{display:flex;gap:30px;margin:0 auto;color:var(--sub)}
+.est span{cursor:pointer;padding:2px 2px;position:relative}
+.est span.on{color:var(--blue);font-weight:600}
+.est span.pd::after{content:"";position:absolute;top:0;right:-8px;width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.etop .act{display:flex;gap:10px}
+.etop .tt,.est span,.etop button{white-space:nowrap}.etop .tt{min-width:0}
+body.dw-narrow .est{gap:14px;margin:0 auto 0 8px}body.dw-narrow .etop{gap:10px;padding:0 12px}body.dw-narrow .etop button{padding:5px 10px}
+.ebanner{background:linear-gradient(90deg,#f0f5ff,#f6f0ff);border-bottom:1px solid #d9e4ff;padding:9px 20px;font-size:13px;display:none;align-items:center;gap:10px}
+.ebanner.on{display:flex}.ebanner a{color:var(--blue);cursor:pointer}.ebanner .x{margin-left:auto;cursor:pointer;color:var(--sub)}
+.stage{flex:1;overflow:auto;padding:24px}
+.pane{display:none}.pane.on{display:block}
+.card{background:#fff;border-radius:8px;max-width:560px;margin:0 auto;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.f{margin-bottom:18px;border-radius:6px;padding:2px 4px;margin-left:-4px;margin-right:-4px}
+.flash{animation:fl 1.6s ease-out forwards}
+@keyframes fl{0%{background:#cfe0ff}100%{background:transparent}}
+label.t{display:block;font-weight:600;margin-bottom:6px}
+label.t i{color:var(--red);font-style:normal;margin-left:2px}
+.pend{display:none;margin-left:8px;font-size:12px;font-weight:400;color:var(--warn);background:#fff3e8;padding:0 8px;border-radius:10px}
+.f.miss .pend{display:inline}
+.f.miss input[type=text],.f.miss select{border-color:#ffc58f}
+.cnt{text-align:right;color:var(--sub);font-size:12px}
+.radio label{margin-right:18px;cursor:pointer}
+.chips{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:#e8f0ff;color:var(--blue);padding:1px 10px;border-radius:12px;font-size:13px}
+.sw{display:flex;align-items:center;gap:8px;color:var(--sub);font-size:13px}
+.tg{width:34px;height:20px;border-radius:10px;background:#bbbfc4;position:relative;cursor:pointer;flex:none;transition:.2s}
+.tg::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.tg.on{background:var(--blue)}.tg.on::after{left:16px}.tg.unset{opacity:.45}
+.actions{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:8px}
+.actions .gate{margin-right:auto;font-size:12px;color:var(--warn)}.actions .gate.ok{color:var(--ok)}
+details.jd{max-width:560px;margin:14px auto 0;font-size:12px;color:var(--sub)}
+details.jd summary{cursor:pointer}
+.json{margin-top:6px;background:#1f2329;color:#a6e3a1;border-radius:8px;padding:12px 16px;font:12px/1.6 ui-monospace,Menlo,monospace;white-space:pre-wrap;max-height:260px;overflow:auto}
+.cv-h{display:flex;align-items:baseline;gap:8px;margin-bottom:14px}.cv-h b{font-size:15px}.cv-h span{color:var(--sub);font-size:12px}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:36px 12px;text-align:center;color:var(--sub)}
+.fc{position:relative;border:1px solid var(--line);border-radius:8px;padding:10px 12px 12px;margin-bottom:10px;background:#fff}
+.fc.miss{border-color:#ffc58f;background:#fffaf5}
+.fc .hd{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.fc .hd b{font-weight:600}.fc .hd i{color:var(--red);font-style:normal}
+.tag{font-size:12px;color:var(--sub);background:#f2f3f5;border-radius:4px;padding:0 6px}
+.bd{font-size:12px;color:var(--warn);background:#fff3e8;border-radius:10px;padding:0 8px}
+.fc .x{margin-left:auto;border:none;background:none;color:var(--sub);padding:0 4px;font-size:16px}
+.fc .x:hover{color:var(--red)}
+.pv{color:var(--sub);font-size:13px}.pv.in{border:1px solid var(--line);border-radius:6px;padding:5px 10px;background:#fafafa}.pv.tall{height:52px}
+.pv.dim{font-style:italic}
+.sub{margin-top:6px;border:1px dashed #b8c4e0;border-radius:6px;padding:6px 8px;background:#f8faff}
+.sub .li{display:flex;align-items:center;gap:6px;font-size:13px;padding:2px 0}
+.sub small{color:var(--sub)}
+.fl{display:flex;flex-direction:column;align-items:center}
+.fl .con{width:2px;height:18px;background:#c9cdd4}
+.nd{width:260px;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden;text-align:left}
+.nd .nh{display:flex;align-items:center;padding:3px 10px;font-size:12px;font-weight:600;color:#fff;background:#8f959e}
+.nd.approval .nh{background:#ff9a2e}.nd.notify .nh{background:#14c0c9}.nd.fixed .nh{background:#a0a8c4}
+.nd .nh .x{margin-left:auto;border:none;background:none;color:#fff;padding:0 2px;font-size:15px;line-height:1;opacity:.85;cursor:pointer}
+.nd .nb{padding:7px 10px;font-size:13px;color:var(--text);word-break:break-all}
+.nd .nb small{color:var(--sub)}
+.nd.miss{border-color:#ffc58f;box-shadow:0 0 0 2px #fff3e8}
+.nd .bd{display:inline-block;margin:2px 4px 0 0}
+.brn{display:flex;gap:14px;align-items:flex-start;padding:10px 12px 4px;border-top:2px solid #c9cdd4;border-bottom:2px solid #c9cdd4;border-radius:2px;background:#fafbfc}
+.brc{display:flex;flex-direction:column;align-items:center;width:230px}
+.brc .nd{width:230px}.nd.cond .nh{background:#2f9d4f}.nd.def .nh{background:#9aa0aa}
+.brn-t{font-size:12px;color:var(--sub);margin:4px 0 -2px}
+
+/* AI 悬浮入口（仅编辑器内） */
+#ai-fab{position:fixed;right:28px;bottom:28px;z-index:20;border:none;border-radius:24px;padding:11px 20px;font-weight:600;color:#fff;background:linear-gradient(90deg,#3370ff,#7a5af8);box-shadow:0 6px 20px rgba(80,90,240,.35);display:none;cursor:pointer}
+#ai-fab:hover{transform:translateY(-1px)}
+body.in-editor #ai-fab{display:block}body.dw-open #ai-fab{display:none}
+
+/* ---------- 抽屉 ---------- */
+#dw-mask{position:fixed;inset:0;background:rgba(31,35,41,.45);z-index:30;display:none}
+body.dw-open.dw-wide #dw-mask{display:block}
+#dw{position:fixed;top:0;right:0;bottom:0;background:#fff;z-index:40;display:none;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.15)}
+body.dw-open #dw{display:flex}
+#dw.wide{width:min(1100px,95vw)}#dw.narrow{width:440px;top:48px}
+.dw-h{height:52px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 18px;gap:10px;flex:none}
+.dw-h b{font-size:15px}.dw-h span{color:var(--sub);font-size:12px}
+.dw-h .sp{margin-left:auto;display:flex;gap:8px}
+.dw-h button{padding:2px 10px;font-size:12px}
+.dw-h .x{border:none;font-size:20px;padding:0 6px;color:var(--sub);background:none}
+.dw-b{flex:1;display:flex;min-height:0}
+.dw-main{flex:1;min-width:0;overflow:auto;padding:22px 26px;background:#fafbfc}
+.dw-chat{width:390px;border-left:1px solid var(--line);display:none;flex-direction:column;min-height:0;background:#fff;flex:none}
+#dw.wide.has-chat .dw-chat{display:flex}
+#dw.narrow .dw-b{flex-direction:column}
+#dw.narrow .dw-main{flex:none;max-height:34%;padding:12px 16px;border-bottom:1px solid var(--line)}
+#dw.narrow .dw-chat{display:flex;width:auto;flex:1;border-left:none}
+#dw.narrow .hero{display:none}
+#dw.narrow .dw-main:empty,#dw.narrow .dw-main.none{display:none}
+.hero{max-width:620px;margin:60px auto 0;text-align:center}
+.hero h2{margin:0 0 6px;font-size:22px}
+.hero p{margin:0 0 18px;color:var(--sub)}
+.hero textarea{height:92px;font-size:15px;padding:10px 12px;text-align:left}
+.hero .row2{display:flex;gap:8px;margin-top:10px;justify-content:center;flex-wrap:wrap}
+.hero .ex{background:#f2f3f5;border-radius:14px;padding:3px 12px;font-size:13px;color:var(--sub);cursor:pointer;border:none}
+.hero .ex:hover{background:#e8f0ff;color:var(--blue)}
+.ovc{max-width:720px;margin:0 auto;background:#fff;border-radius:8px;padding:22px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.ov-h{display:flex;align-items:center;gap:10px;margin-bottom:6px}.ov-h b{font-size:17px}
+.ov-h .tag{color:var(--blue);background:#e8f0ff}
+.ov-sub{color:var(--sub);font-size:13px;margin-bottom:14px}
+.as{border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px}
+.as h4{margin:0 0 4px;font-size:13px}.as ul{margin:0;padding-left:0;list-style:none}
+.as li{padding:3px 0;display:flex;gap:8px;align-items:baseline}
+.as.key{background:#fff7ed;border:1px solid #ffd8a8}.as.key h4,.as.key summary{color:#d46b08}
+.as.norm{background:#f7f8fa;border:1px solid var(--line)}.as summary{cursor:pointer;font-weight:600;color:var(--sub)}
+.stg{flex:none;font-size:11px;background:#fff;border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--sub)}
+.stg.lk{cursor:pointer}.stg.lk:hover{color:var(--blue);border-color:var(--blue)}
+.ovb{display:grid;grid-template-columns:1fr;gap:10px;margin-top:6px}
+.ovb section{border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.ovb h4{margin:0 0 6px;font-size:13px}
+.kv{display:grid;grid-template-columns:90px 1fr;gap:2px 8px;font-size:13px;margin:0}.kv dt{color:var(--sub)}.kv dd{margin:0}
+.fch{display:flex;flex-wrap:wrap;gap:6px}
+.fch span{font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:1px 8px;background:#fafbfc}
+.fch span i{font-style:normal;color:var(--red)}.fch span small{color:var(--sub);margin-left:4px}
+.ol,.ol ul{list-style:none;margin:0;padding-left:16px;font-size:13px}.ol{padding-left:0}
+.ol li{padding:2px 0;position:relative}.ol li::before{content:"";position:absolute;left:-10px;top:12px;width:6px;height:1px;background:#c9cdd4}
+.ol>li::before{display:none}
+.ol .b2{color:#2f9d4f;font-weight:600}
+.pill{display:inline-block;font-size:11px;border-radius:8px;padding:0 6px;margin-right:4px;color:#fff}
+.pill.ap{background:#ff9a2e}.pill.nt{background:#14c0c9}.pill.fx{background:#a0a8c4}
+.ov-banner{background:#fff3e8;border:1px solid #ffd8a8;color:#d46b08;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:12px}
+.askb{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.askb button{text-align:left;padding:6px 10px}.askb small{color:var(--sub);display:block}
+.log{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.m{max-width:90%;padding:8px 12px;border-radius:10px;white-space:pre-wrap}
+.m.u{align-self:flex-end;background:var(--blue);color:#fff}
+.m.a{align-self:flex-start;background:#f2f3f5}
+.m.sys{align-self:center;background:none;color:var(--sub);font-size:12px;text-align:center}
+.m.ok{align-self:stretch;max-width:none;background:#e8ffea;color:#00842a;border:1px solid #b7ebc0}
+.blk{align-self:stretch;border:1px solid #b5ccff;background:#f5f9ff;border-radius:8px;padding:10px 12px}
+.blk h5{margin:0 0 6px;font-size:13px;color:var(--blue)}
+.blk.done{opacity:.6;pointer-events:none}
+.b{display:flex;gap:8px;margin-top:10px;align-items:center}
+.b button{padding:3px 14px}.b .st{color:var(--sub);font-size:12px}
+.q{padding:8px 0;border-top:1px dashed #cfdcf7}
+.q:first-of-type{border-top:none;padding-top:2px}
+.q .qt{font-weight:600;font-size:13px}.q .qh{color:var(--sub);font-size:12px}.q .qr{color:var(--warn);font-size:12px;margin:2px 0}
+.opts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.opt{border:1px solid var(--line);background:#fff;border-radius:16px;padding:2px 12px;font-size:13px;cursor:pointer;user-select:none}
+.opt small{color:var(--sub);margin-left:4px}
+.opt.sel{border-color:var(--blue);background:var(--blue);color:#fff}.opt.sel small{color:#dbe6ff}
+.q input[type=text],.q input[type=number],.q textarea{margin-top:6px;padding:5px 10px;height:auto;font-size:13px}
+.q textarea{height:48px}
+.tip{padding:0 16px 8px;display:flex;gap:6px;flex-wrap:wrap}
+.tip button{font-size:12px;padding:2px 10px;border-radius:12px;color:var(--sub)}
+.inp{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px}
+.inp input{flex:1;border:1px solid var(--line);border-radius:6px;padding:8px 10px;font:inherit}
+.dots::after{content:"…";animation:d 1s infinite}
+@keyframes d{50%{opacity:.2}}
+#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#1f2329;color:#fff;padding:8px 18px;border-radius:8px;font-size:13px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i></i>蜂巢管理平台</div>
+  <div class="r"><span class="prov" id="prov"></span><span>帮助中心</span><span class="u"><i></i>admin</span></div>
+</header>
+
+<div class="shell">
+  <nav class="sb">
+    <div class="g">组织架构</div><div class="s">成员与部门</div><div class="s">职务角色管理</div><div class="s">字段管理</div>
+    <div class="g">权限管理</div><div class="g">驾驶舱数据报表</div><div class="g">审计日志</div><div class="g">企业设置</div><div class="g">安全防护</div>
+    <div class="g on">审批工作台</div><div class="s on">配置审批流</div><div class="s">数据管理</div><div class="s">银行账户管理</div>
+    <div class="g">存储容量</div>
+  </nav>
+
+  <div class="main">
+    <!-- ===== 列表页 ===== -->
+    <div class="view on" id="v-list">
+      <div class="lv"><div class="lcard">
+        <div class="ltop">
+          <div class="search"><input type="text" id="search" placeholder="搜索模板名称"></div>
+          <div class="sp">
+            <button class="ai-btn" id="ai-new" title="说一句话，AI 搭好整个审批">✨ AI 搭建<span class="nw">新</span></button>
+            <button class="p" id="manual-new">＋ 新建审批流</button>
+            <div class="coach" id="coach">新功能：说一句话，AI 帮你搭好整个审批（表单 + 流程）。原来的「新建审批流」不受影响。<a id="coach-x">知道了</a></div>
+          </div>
+        </div>
+        <div class="tabs" id="tabs"></div>
+        <table><thead><tr><th id="th-n">财务管理</th><th>谁可以发起</th><th>最后更新时间</th><th>更新人</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- ===== 编辑器 ===== -->
+    <div class="view" id="v-editor">
+      <div class="etop">
+        <span class="back" id="back" title="返回列表">‹</span>
+        <div class="tt"><b id="e-name">未命名审批流</b><small id="e-sub">草稿</small></div>
+        <div class="est"><span id="e-basic" class="on">① 设置基础信息</span><span id="e-form">② 设计表单</span><span id="e-flow">③ 配置流程</span></div>
+        <div class="act"><button id="e-save">保存为草稿</button><button class="p" id="e-pub">发布</button></div>
+      </div>
+      <div class="ebanner" id="ed-banner"></div>
+      <div class="stage">
+        <div class="pane on" id="p-basic">
+          <div class="card">
+            <div class="f" data-k="name"><label class="t">名称<i>*</i><span class="pend">待确认</span></label><input type="text" id="name" maxlength="20" placeholder="请输入审批流名称"></div>
+            <div class="f" data-k="description"><label class="t">说明</label><textarea id="description" maxlength="50" placeholder="请输入审批流说明（选填）"></textarea><div class="cnt"><span id="dc">0</span>/50</div></div>
+            <div class="f" data-k="category"><label class="t">分组<i>*</i><span class="pend">待确认</span></label><select id="category"></select></div>
+            <div class="f" data-k="initiator"><label class="t">谁可以发起<i>*</i><span class="pend">待确认</span></label>
+              <div class="radio"><label><input type="radio" name="sc" value="all"> 全员</label><label><input type="radio" name="sc" value="specified"> 指定人员</label></div>
+              <div class="chips" id="members"></div></div>
+            <div class="f" data-k="showInWorkbench"><label class="t">是否在工作台展示<i>*</i><span class="pend">待确认</span></label>
+              <div class="sw"><div class="tg" id="tg"></div><span>关闭后，已添加该审批的用户工作台入口将自动移除</span></div></div>
+            <div class="actions"><span class="gate" id="gate-basic"></span><button class="p" id="next-basic">下一步：设计表单</button></div>
+          </div>
+          <details class="jd"><summary>查看即将提交的 JSON</summary><div class="json"><span id="json-basic"></span></div></details>
+        </div>
+        <div class="pane" id="p-form">
+          <div class="card">
+            <div class="cv-h"><b id="cv-title">表单字段</b><span id="cv-sub"></span></div>
+            <div id="canvas"></div>
+            <div class="actions"><span class="gate" id="gate-form"></span><button class="p" id="next-form">下一步：配置流程</button></div>
+          </div>
+          <details class="jd"><summary>查看即将提交的 JSON</summary><div class="json"><span id="json-form"></span></div></details>
+        </div>
+        <div class="pane" id="p-flow">
+          <div class="card" style="max-width:760px">
+            <div class="cv-h"><b id="fl-title">审批流程</b><span id="fl-sub"></span></div>
+            <div id="flow"></div>
+            <div class="actions" style="margin-top:16px"><span class="gate" id="gate-flow"></span></div>
+          </div>
+          <details class="jd" style="max-width:760px"><summary>查看即将提交的 JSON</summary><div class="json"><span id="json-flow"></span></div></details>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button id="ai-fab">✨ AI 调整</button>
+
+<!-- ===== AI 抽屉：创建时宽（左：方案总览 右：对话），编辑器内窄（只留对话，不挡画布） ===== -->
+<div id="dw-mask"></div>
+<div id="dw" class="wide">
+  <div class="dw-h"><b>✨ AI 搭建审批</b><span id="dw-sub">一次搭好，你只确认一次</span>
+    <div class="sp"><button id="dw-new">重新开始</button><button class="x" id="dw-x" title="关闭">×</button></div></div>
+  <div class="dw-b">
+    <div class="dw-main" id="dw-main">
+      <div class="hero" id="hero">
+        <h2>一句话，搭好整个审批</h2>
+        <p>说出你想要的审批，AI 一次性搭好基础信息、表单字段和审批流程；你只需要在最后确认一次。</p>
+        <textarea id="hero-q" placeholder="例如：配置一个请假审批流"></textarea>
+        <div class="row2"><button class="p" id="hero-go">开始搭建</button></div>
+        <div class="row2" id="hero-ex"></div>
+      </div>
+      <div id="ov"></div>
+    </div>
+    <div class="dw-chat">
+      <div class="log" id="log-all"></div>
+      <div class="tip" id="tip-all"></div>
+      <form class="inp" id="form"><input id="q" autocomplete="off"><button class="p">发送</button></form>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
+const split = (v) => v.split(/[、，,\n]/).map((x) => x.trim()).filter(Boolean);
+const uniq = (a) => [...new Set(a)];
+const clone = (x) => structuredClone(x);
+const two = (n) => String(n).padStart(2, '0');
+const nowStr = () => { const d = new Date(); return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`; };
+let toastT; const toast = (t) => { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 2400); };
+
+const TYPES = { text: '单行文本', textarea: '多行文本', number: '数字', money: '金额', select: '单选', multiselect: '多选', date: '日期', daterange: '日期区间', detail: '明细', contact: '联系人', bank: '银行账户', dept: '部门', attachment: '附件上传', image: '图片', leave: '请假控件组', punchfix: '补卡控件组', overtime: '加班控件组' };
+const ATTR = { type: '类型', options: '选项', withTime: '日期格式', currency: '币种', children: '明细列', required: '必填' };
+const SYM = { CNY: '¥', USD: '$', EUR: '€' };
+const CATS = ['财务管理', '考勤管理', '人事管理', '行政管理', '其他'];
+
+// 三份配置各一个对象：{ cap, state, missing, undo }；out = 追问卡片统一显示在 AI 抽屉的对话里
+const S = {
+  basic: { cap: 'approvalBasic', undo: [] },
+  form: { cap: 'approvalForm', undo: [] },
+  flow: { cap: 'approvalFlow', undo: [] },
+};
+// AI 会话：msgs 对话上下文；assumptions AI 的假设清单；built 是否已搭出方案；created 是否已生成草稿；mode create|refine
+const A = { msgs: [], undo: [], log: $('#log-all'), assumptions: [], built: false, created: false, chat: false, mode: 'create' };
+A.out = A.log;
+for (const k of ['basic', 'form', 'flow']) S[k].out = A.log;
+let meta, view = 'list', edStep = 'basic', listCat = '财务管理', curDraft = null;
+const DRAFTS = [];
+
+const ctx = () => {
+  const b = S.basic.state || {};
+  const form = (S.form.state?.fields || []).filter((f) => f.type && ['money', 'number', 'date', 'select'].includes(f.type)).map((f) => ({ id: f.id, label: f.label, type: f.type, options: f.options, currency: f.currency }));
+  return { name: b.name || '', category: b.category || '', description: b.description || '', basic: { name: b.name || '', category: b.category || '', description: b.description || '', initiator: b.initiator }, form };
+};
+const api = async (path, st, body) => (await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ capability: st.cap, config: st.state, context: ctx(), ...body }) })).json();
+const pendCount = (k) => (S[k].missing || []).filter((m) => m !== 'confirmed').length;
+const pendAll = () => pendCount('basic') + pendCount('form') + pendCount('flow');
+
+/* =====================================================================
+   列表页
+   ===================================================================== */
+const STATIC = {
+  财务管理: [['11', '全部', '2026-10-09 19:27:31', '郑五'], ['活动经费申请', '全部', '2026-10-09 16:06:43', '林二'], ['测试审批时区', '全部', '2026-10-06 15:23:57', '陈一'], ['部门末级', '全部', '2026-10-06 12:26:50', 'admin'], ['测试-条件分支', '全部', '2026-10-06 12:23:45', 'admin'], ['dsd', '全部', '2026-10-05 18:40:45', '林二'], ['test', '全部', '2026-09-29 11:11:45', '林二'], ['请假测试 - 副本', '全部', '2026-09-28 12:30:58', '林二'], ['补卡申请', '全部', '2026-09-17 15:36:42', 'Ops'], ['测试工作台', '全部', '2026-09-15 13:20:47', '陈一'], ['请假测试', '全部', '2026-09-14 18:57:48', 'Root'], ['明细表验证', '全部', '2026-09-12 15:11:38', 'admin'], ['问题修复验证', '全部', '2026-09-11 16:54:14', 'admin'], ['报销A', '指定人员', '2026-09-10 12:19:17', 'Root']],
+  考勤管理: [['测试-请假', '指定人员', '2026-10-06 16:21:01', 'Tech'], ['补卡', '全部', '2026-10-06 11:59:51', '陈一'], ['请假测试', '全部', '2026-10-04 17:51:59', '陈一'], ['加班审批测试', '全部', '2026-10-04 11:33:30', '陈一'], ['请假', '全部', '2026-09-15 19:46:46', 'admin'], ['加班申请', '全部', '2026-08-19 16:50:50', 'RD'], ['出差申请', '全部', '2026-08-15 17:19:38', 'RD']],
+  人事管理: [['调岗', '全部', '2026-08-15 12:44:48', 'RD'], ['转正', '全部', '2026-08-10 16:23:17', 'RD'], ['离职', '全部', '2026-08-10 16:20:46', 'RD']],
+  行政管理: [['设备巡检', '全部', '2026-08-20 11:05:50', 'RD'], ['物品领用', '全部', '2026-08-19 16:33:38', 'RD'], ['物品报修', '全部', '2026-08-18 16:02:24', 'RD'], ['采购申请', '指定人员', '2026-08-18 15:26:52', 'RD'], ['用车申请', '全部', '2026-08-15 15:32:48', 'RD']],
+  其他: [['外出申请', '指定人员', '2026-09-09 21:40:12', 'Tech'], ['测试-全字段验证', '全部', '2026-09-09 19:14:41', 'admin'], ['流水线生产发布审核', '全部', '2026-08-28 18:27:11', '周三']],
+};
+function renderList() {
+  const q = $('#search').value.trim();
+  const dr = DRAFTS.filter((d) => (d.state.basic.category || '其他') === listCat).map((d) => ({ d, n: d.state.basic.name || '未命名审批流', who: d.state.basic.initiator?.scope === 'specified' ? '指定人员' : '全部', t: d.updated }));
+  const st = (STATIC[listCat] || []).map(([n, who, t, u]) => ({ n, who, t, u }));
+  const rows = [...dr, ...st].filter((r) => !q || r.n.includes(q));
+  $('#tabs').innerHTML = CATS.map((c) => `<span class="${c === listCat ? 'on' : ''}" data-c="${c}">${c}</span>`).join('');
+  $('#tabs').querySelectorAll('span').forEach((s) => (s.onclick = () => { listCat = s.dataset.c; renderList(); }));
+  $('#th-n').textContent = `${listCat}（${rows.length}）`;
+  $('#rows').innerHTML = rows.map((r, i) => `<tr class="${r.d && r.d === DRAFTS[0] && Date.now() - r.d.id < 8000 ? 'new' : ''}"><td class="nm"><div class="ic">✔</div><span>${esc(r.n)}${r.d ? (r.d.published ? '<span class="tg2 pb">已发布</span>' : '<span class="tg2 dr">草稿</span>') + (r.d.ai ? '<span class="tg2 ai">✨AI</span>' : '') : ''}</span></td><td>${r.who}</td><td>${r.t}</td><td>${r.d ? 'admin' : esc(r.u)}</td><td><a data-i="${i}">编辑</a><a style="color:var(--sub)">···</a></td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--sub);padding:40px">没有匹配的审批</td></tr>';
+  $('#rows').querySelectorAll('a[data-i]').forEach((a) => (a.onclick = () => {
+    const r = rows[+a.dataset.i];
+    if (r.d) { openDraft(r.d); } else toast('demo：示例数据，仅「AI 生成的草稿」可以打开编辑');
+  }));
+}
+$('#search').oninput = renderList;
+$('#coach-x').onclick = () => { $('#coach').style.display = 'none'; try { sessionStorage.setItem('coach', '1'); } catch { /* ignore */ } };
+try { if (sessionStorage.getItem('coach')) $('#coach').style.display = 'none'; } catch { /* ignore */ }
+
+/* =====================================================================
+   视图切换 / 编辑器
+   ===================================================================== */
+function showView(v) {
+  view = v;
+  $('#v-list').classList.toggle('on', v === 'list'); $('#v-editor').classList.toggle('on', v === 'editor');
+  document.body.classList.toggle('in-editor', v === 'editor');
+  if (v === 'list') renderList();
+}
+function gotoStep(step) {
+  edStep = step;
+  for (const k of ['basic', 'form', 'flow']) { $('#e-' + k).classList.toggle('on', k === step); $('#p-' + k).classList.toggle('on', k === step); }
+}
+['basic', 'form', 'flow'].forEach((k) => ($('#e-' + k).onclick = () => gotoStep(k)));
+$('#next-basic').onclick = () => gotoStep('form');
+$('#next-form').onclick = () => gotoStep('flow');
+
+function renderEditorBar() {
+  const b = S.basic.state; if (!b) return;
+  $('#e-name').textContent = b.name || '未命名审批流';
+  $('#e-sub').textContent = (curDraft?.published ? '已发布' : '草稿') + (curDraft?.ai ? ' · AI 生成' : '');
+  for (const k of ['basic', 'form', 'flow']) $('#e-' + k).classList.toggle('pd', pendCount(k) > 0);
+  const n = pendAll();
+  $('#e-pub').disabled = n > 0; $('#e-pub').title = n ? `还有 ${n} 项必填信息未确认` : '';
+}
+
+function loadDraft(d) {
+  S.basic.state = clone(d.state.basic); S.form.state = clone(d.state.form); S.flow.state = clone(d.state.flow);
+  A.assumptions = clone(d.assumptions || []); A.built = !!d.ai; A.created = true; curDraft = d;
+}
+function snapshot() { return { basic: clone(S.basic.state), form: clone(S.form.state), flow: clone(S.flow.state) }; }
+function saveCurrent() {
+  const s = snapshot();
+  if (curDraft) { curDraft.state = s; curDraft.assumptions = clone(A.assumptions); curDraft.updated = nowStr(); return curDraft; }
+  if (!s.basic.name && !s.form.fields.length && !s.flow.nodes.length) return null;     // 空白新建，不留草稿
+  curDraft = { id: Date.now(), ai: A.built, published: false, updated: nowStr(), assumptions: clone(A.assumptions), state: s };
+  DRAFTS.unshift(curDraft); return curDraft;
+}
+async function recompute() {
+  for (const k of ['basic', 'form', 'flow']) { const r = await api('/api/answer', S[k], { answers: {} }); S[k].missing = r.missing; }
+  for (const k of ['basic', 'form', 'flow']) render(S[k]);
+}
+function enterEditor(banner) {
+  closeDrawer(); showView('editor'); gotoStep('basic');
+  const key = A.assumptions.filter((a) => a.key);
+  const bn = $('#ed-banner');
+  if (banner && key.length) {
+    bn.innerHTML = `<span>✨ AI 已根据你的描述搭好这份草稿，请检查后发布。有 <b>${key.length}</b> 项关键规则请你过目：</span><a id="bn-see">查看 AI 的选择</a><span class="x" id="bn-x">×</span>`;
+    bn.classList.add('on'); $('#bn-x').onclick = () => bn.classList.remove('on'); $('#bn-see').onclick = () => openAI('refine');
+  } else bn.classList.remove('on');
+  for (const k of ['basic', 'form', 'flow']) render(S[k]);
+}
+function openDraft(d) { resetSession(true); loadDraft(d); recompute().then(() => enterEditor(false)); }
+function backToList() { saveCurrent(); closeDrawer(); curDraft = null; showView('list'); }
+$('#back').onclick = backToList;
+$('#e-save').onclick = () => { const d = saveCurrent(); toast(d ? '已保存为草稿' : '内容为空，未保存'); renderEditorBar(); };
+$('#e-pub').onclick = () => { const d = saveCurrent(); if (d) { d.published = true; toast('demo：已发布（此处对接后台发布接口）'); } closeDrawer(); curDraft = null; showView('list'); };
+$('#manual-new').onclick = () => { resetSession(false); curDraft = null; enterEditor(false); recompute(); };
+
+/* =====================================================================
+   渲染：基础信息 / 表单 / 流程
+   ===================================================================== */
+function render(st, flash = []) { (st === S.basic ? renderBasic : st === S.form ? renderForm : renderFlow)(st, flash); renderEditorBar(); if (A.built || A.mode === 'refine') renderOverview(); }
+function flashEl(e) { if (!e) return; e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); }
+
+function renderBasic(st, flash) {
+  const c = st.state;
+  $('#name').value = c.name; $('#description').value = c.description; $('#dc').textContent = c.description.length; $('#category').value = c.category || '';
+  document.querySelectorAll('[name=sc]').forEach((r) => (r.checked = !!c.initiator && r.value === c.initiator.scope));
+  $('#members').innerHTML = c.initiator?.scope === 'specified' ? c.initiator.members.map((m) => `<span class="chip">${esc(m)}</span>`).join('') : '';
+  $('#tg').classList.toggle('on', c.showInWorkbench === true); $('#tg').classList.toggle('unset', c.showInWorkbench == null);
+  $('#json-basic').textContent = JSON.stringify(c, null, 2);
+  const top = new Set((st.missing || []).map((x) => x.split('.')[0]));
+  document.querySelectorAll('#p-basic .f[data-k]').forEach((e) => e.classList.toggle('miss', top.has(e.dataset.k)));
+  const n = (st.missing || []).length;
+  $('#next-basic').disabled = false;
+  $('#gate-basic').className = 'gate'; $('#gate-basic').textContent = n ? `还有 ${n} 项必填未确认：${st.missing.map((x) => meta.caps.approvalBasic.labels[x]).join('、')}` : '';
+  flash.forEach((k) => flashEl(document.querySelector(`#p-basic .f[data-k=${k}]`)));
+}
+
+const range = (f) => (f.min != null || f.max != null ? `　<small>范围 ${f.min ?? '-∞'} ~ ${f.max ?? '+∞'}</small>` : '');
+function preview(f) {
+  const o = f.options || [], sub = (t) => `<div class="pv in">${t}</div>`;
+  switch (f.type) {
+    case null: return '<div class="pv dim">类型待确认</div>';
+    case 'text': return sub(esc(f.placeholder || '请输入'));
+    case 'textarea': return `<div class="pv in tall">${esc(f.placeholder || '请输入')}</div>`;
+    case 'number': return sub(esc(f.placeholder || '请输入') + (f.unit ? `　<small>${esc(f.unit)}</small>` : '') + range(f));
+    case 'money': return sub(f.currency ? `${SYM[f.currency]} ${esc(f.placeholder || '0.00')}　<small>${f.currency}</small>${range(f)}` : '币种待确认');
+    case 'select': return sub(o.length ? esc(o.join(' ／ ')) : '选项待确认');
+    case 'multiselect': return o.length ? `<div class="chips" style="margin:0">${o.map((x) => `<span class="chip">${esc(x)}</span>`).join('')}</div>` : sub('选项待确认');
+    case 'date': return sub(f.withTime == null ? '日期格式待确认' : f.withTime ? '年-月-日 时:分' : '年-月-日');
+    case 'daterange': return sub(f.withTime == null ? '日期格式待确认' : f.withTime ? '年-月-日 时:分 ~ 年-月-日 时:分' : '年-月-日 ~ 年-月-日');
+    case 'contact': return sub('选择联系人');
+    case 'bank': return sub('选择银行账户');
+    case 'image': return sub('＋ 上传图片');
+    case 'leave': case 'punchfix': case 'overtime': return `<div class="pv dim">系统控件组：自动同步${{ leave: '假期类型与余额', punchfix: '可补卡时间范围', overtime: '加班时长至调休假' }[f.type]}</div>`;
+    case 'dept': return sub('选择部门');
+    case 'attachment': return sub('＋ 上传附件');
+    case 'detail': return `<div class="sub">${f.children.length ? f.children.map((c) => `<div class="li"><b>${esc(c.label)}</b><span class="tag">${c.type ? TYPES[c.type] : '类型待确认'}</span>${c.required === true ? '<i style="color:var(--red)">*</i>' : ''}${badge(c, S.form)}</div>`).join('') : '<div class="pv dim">明细列待确认</div>'}</div>`;
+  }
+}
+function badge(f, s) {
+  const attrs = (s.missing || []).filter((m) => m.startsWith(f.id + '.')).map((m) => ATTR[m.slice(f.id.length + 1)]);
+  return attrs.length ? `<span class="bd">待确认：${attrs.join('、')}</span>` : '';
+}
+function renderForm(s, flash) {
+  const fs = s.state.fields, miss = s.missing || [];
+  $('#cv-title').textContent = `「${S.basic.state.name || '未命名审批流'}」的表单字段`;
+  $('#cv-sub').textContent = fs.length ? `共 ${fs.length} 个字段` : '';
+  $('#canvas').innerHTML = fs.length ? fs.map((f) => `<div class="fc ${miss.some((m) => m.startsWith(f.id + '.')) ? 'miss' : ''}" data-id="${f.id}">
+      <div class="hd"><b>${esc(f.label)}</b>${f.required === true ? '<i>*</i>' : f.required === false ? '<span class="tag">选填</span>' : ''}<span class="tag">${f.type ? TYPES[f.type] : '类型待确认'}</span>${badge(f, s)}<button class="x" data-del="${f.id}" title="删除字段">×</button></div>
+      ${preview(f)}</div>`).join('') : '<div class="empty">还没有字段。点右下角「✨ AI 调整」，说出你想收集哪些信息。</div>';
+  $('#canvas').querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => {
+    s.undo.push(clone(s.state)); s.state.fields = s.state.fields.filter((f) => f.id !== b.dataset.del); s.state.confirmed = false; render(s); refresh(s);
+  }));
+  $('#json-form').textContent = JSON.stringify(s.state, null, 2);
+  const real = miss.filter((m) => m !== 'confirmed');
+  $('#next-form').disabled = false;
+  const g = $('#gate-form'); g.className = 'gate' + (real.length || !fs.length ? '' : ' ok');
+  g.textContent = !fs.length ? '至少需要 1 个字段' : real.length ? `还有 ${real.length} 项属性待确认` : '✓ 所有字段信息已确认';
+  flash.forEach((id) => flashEl(document.querySelector(`#canvas [data-id="${id.split('_')[0]}"]`)));
+}
+
+// ---------- ③ 流程画布 ----------
+const PERSON = { members: '指定成员', self: '发起人自己', role: '职务角色', manager: '直属上级', deptHead: '部门负责人' };
+const FATTR = { approver: '审批人', 'approver.members': '审批人员', 'approver.role': '职务角色', emptyApprover: '审批人为空时', emptyMembers: '空审批人处理人', multiMode: '多人审批方式', sameAsSubmitter: '与提交人同一人时', recipients: '抄送人', conditions: '条件', field: '条件字段', op: '运算符', value: '条件值' };
+const COPS = { eq: '等于', lt: '小于', lte: '小于等于', gt: '大于', gte: '大于等于', neq: '不等于', in: '属于' };
+const EMPTY = { autoPass: '自动通过', specified: '指定人员审批', admin: '转交模板管理员' }, MULTI = { all: '会签', any: '或签' }, SAME = { self: '提交人自己审批', skip: '自动跳过', manager: '转交直属上级', deptHead: '转交部门负责人' };
+const REPEAT = { once: '仅审批一次，重复节点自动同意', each: '每个节点都需要审批' };
+const ptext = (p) => !p ? '待确认' : p.type === 'members' ? (p.members.join('、') || '成员待选') : p.type === 'role' ? `${p.role || '角色待选'}` : PERSON[p.type];
+function flowNames(st) {
+  const m = {}; let a = 0, nf = 0, bn = 0, br = 0;
+  const v = (list) => list.forEach((n) => {
+    if (n.kind === 'approval') m[n.id] = n.name || `审批${++a}`;
+    else if (n.kind === 'notify') m[n.id] = n.name || `通知${++nf}`;
+    else { m[n.id] = n.name || `条件分支节点${++bn}`; n.branches.forEach((b) => { m[b.id] = b.name || `条件分支${++br}`; v(b.nodes); }); v(n.def.nodes); }
+  });
+  v(st.nodes); return m;
+}
+function fieldLabel(id) { return id === 'initiator.dept' ? '发起人所在部门' : id === 'initiator.role' ? '发起人的角色' : (S.form.state.fields.find((f) => f.id === id)?.label || '字段待确认'); }
+const condText = (c) => `${fieldLabel(c.field)} ${COPS[c.op] || '运算符待确认'} ${c.value == null ? '待确认' : Array.isArray(c.value) ? c.value.join('、') : c.value}`;
+function flowBadges(miss, match) {
+  const labels = uniq(miss.filter(match).map((m) => { const r = m.slice(m.indexOf('.') + 1).replace(/\.\d+\./, '.').replace(/^recipients\.(members|role)$/, (x, y) => (y === 'members' ? 'approver.members' : 'approver.role')); return FATTR[r]; }).filter(Boolean));
+  return labels.length ? `<span class="bd">待确认：${labels.join('、')}</span>` : '';
+}
+function renderFlow(s, flash) {
+  const st = s.state, miss = s.missing || [], nm = flowNames(st), b = S.basic.state;
+  const init = !b.initiator ? '发起人待确认' : b.initiator.scope === 'all' ? '全员可发起' : '指定人员：' + b.initiator.members.join('、');
+  const cc = (l) => (l.length ? `抄送：${l.map(ptext).join('；')}` : '<small>可设置抄送人</small>');
+  const card = (n) => {
+    const mine = miss.some((m) => m.startsWith(n.id + '.'));
+    const body = n.kind === 'approval'
+      ? `审批人：${esc(ptext(n.approver))}${n.approver ? `<br><small>${[n.emptyApprover && '为空：' + EMPTY[n.emptyApprover], n.multiMode && MULTI[n.multiMode], n.sameAsSubmitter && '同一人：' + SAME[n.sameAsSubmitter]].filter(Boolean).join(' · ')}</small>` : ''}`
+      : `抄送：${esc(n.recipients.map(ptext).join('；') || '待确认')}`;
+    return `<div class="nd ${n.kind} ${mine ? 'miss' : ''}" data-id="${n.id}"><div class="nh">${n.kind === 'approval' ? '审批' : '通知'} · ${esc(nm[n.id])}<button class="x" data-del="${n.id}" title="删除节点">×</button></div><div class="nb">${body}${flowBadges(miss, (m) => m.startsWith(n.id + '.'))}</div></div>`;
+  };
+  const chain = (list) => list.map((n) => `<div class="con"></div>` + (n.kind === 'branch' ? branch(n) : card(n))).join('');
+  const branch = (n) => `<div class="nd fixed" style="width:auto;border:none;background:none"><div class="brn-t">${esc(nm[n.id])}：按条件分流，从左到右依次判断，都不满足走「其他情况」<button class="x" style="color:var(--red);border:none;background:none;cursor:pointer" data-del="${n.id}" title="删除分支节点">×</button></div>
+    <div class="brn">${n.branches.map((br) => `<div class="brc"><div class="nd cond ${miss.some((m) => m.startsWith(br.id + '.') || br.groups.some((g) => g.some((c) => m.startsWith(c.id + '.')))) ? 'miss' : ''}" data-id="${br.id}"><div class="nh">${esc(nm[br.id])}</div><div class="nb">${br.groups.length ? br.groups.map((g) => g.map((c) => esc(condText(c))).join('<br>且 ')).join('<br>或 ') : '条件待确认'}${flowBadges(miss, (m) => m.startsWith(br.id + '.') || br.groups.some((g) => g.some((c) => m.startsWith(c.id + '.'))))}</div></div>${chain(br.nodes)}</div>`).join('')}
+    <div class="brc"><div class="nd def"><div class="nh">其他情况</div><div class="nb"><small>不满足以上所有分支条件时进入</small></div></div>${chain(n.def.nodes)}</div></div></div>`;
+  $('#flow').innerHTML = `<div class="fl"><div class="nd fixed"><div class="nh">发起</div><div class="nb">发起人：${esc(init)}<br>${cc(st.startCc)}</div></div>${chain(st.nodes)}<div class="con"></div><div class="nd fixed"><div class="nh">结束</div><div class="nb">${cc(st.endCc)}</div></div></div>`;
+  $('#flow').querySelectorAll('[data-del]').forEach((x) => (x.onclick = () => {
+    s.undo.push(clone(s.state));
+    const rm = (list) => { const i = list.findIndex((n) => n.id === x.dataset.del); if (i >= 0) { list.splice(i, 1); return true; } return list.some((n) => n.kind === 'branch' && (n.branches.some((b2) => rm(b2.nodes)) || rm(n.def.nodes))); };
+    rm(s.state.nodes); s.state.confirmed = false; render(s); refresh(s);
+  }));
+  $('#fl-title').textContent = `「${b.name || '未命名审批流'}」的审批流程`;
+  const cnt = (function c(l) { return l.reduce((a, n) => a + 1 + (n.kind === 'branch' ? n.branches.reduce((x, y) => x + c(y.nodes), 0) + c(n.def.nodes) : 0), 0); })(st.nodes);
+  $('#fl-sub').textContent = cnt ? `共 ${cnt} 个节点${st.repeatApprover ? ' · 重复审批人：' + REPEAT[st.repeatApprover] : ''}` : '';
+  $('#json-flow').textContent = JSON.stringify(st, null, 2);
+  const real = miss.filter((m) => m !== 'confirmed');
+  const g = $('#gate-flow'); g.className = 'gate' + (real.length || !cnt ? '' : ' ok');
+  g.textContent = !cnt ? '至少需要 1 个审批节点' : real.length ? `还有 ${real.length} 项待确认` : '✓ 流程配置已全部确认';
+  flash.forEach((id) => flashEl(document.querySelector(`#flow [data-id="${id}"]`)));
+}
+
+// 手动编辑：AI 只是另一种输入方式；缺项以服务端计算为准
+let timer;
+function refresh(s) { clearTimeout(timer); timer = setTimeout(async () => { const r = await api('/api/answer', s, { answers: {} }); s.missing = r.missing; render(s); }, 150); }
+$('#name').oninput = (e) => { S.basic.state.name = e.target.value; render(S.basic); refresh(S.basic); };
+$('#description').oninput = (e) => { S.basic.state.description = e.target.value; render(S.basic); };
+$('#category').onchange = (e) => { S.basic.state.category = e.target.value || null; render(S.basic); refresh(S.basic); };
+document.querySelectorAll('[name=sc]').forEach((r) => (r.onchange = () => { const B = S.basic.state; B.initiator = { scope: r.value, members: r.value === 'all' ? [] : B.initiator?.members || [] }; render(S.basic); refresh(S.basic); }));
+$('#tg').onclick = () => { S.basic.state.showInWorkbench = S.basic.state.showInWorkbench !== true; render(S.basic); refresh(S.basic); };
+
+/* =====================================================================
+   AI 抽屉：对话组件
+   ===================================================================== */
+const L = (s) => s.out;
+function add(s, cls, text) { const d = el('div', 'm ' + cls); d.textContent = text; L(s).append(d); L(s).scrollTop = 1e9; return d; }
+function block(s, html) { const d = el('div', 'blk'); d.innerHTML = html; L(s).append(d); L(s).scrollTop = 1e9; return d; }
+const lock = (d, txt) => { d.classList.add('done'); const b = d.querySelector('.b'); if (b) b.innerHTML = `<span class="st">${txt}</span>`; };
+
+function commit(s, res) { s.undo.push(clone(s.state)); s.state = res.next; s.missing = res.missing; render(s, res.touched); }
+// 点选卡片的回答：不经过模型，直接校验后写入
+function handle(s, res) {
+  if (res.status === 'error') return add(s, 'sys', res.reply);
+  res.errors.forEach((e) => add(s, 'sys', '⚠ ' + e));
+  s.missing = res.missing;
+  if (res.changed) { commit(s, res); add(s, 'sys', '已应用：' + (res.rows.length > 4 ? `${res.rows.length} 项配置变更` : res.rows.map((r) => `${r.label}${r.new ? ' ' + r.new : ''}`).join('；'))); } else render(s);
+  const qs = res.questions.filter((q) => q.field !== 'confirm');      // 整体确认由总览/编辑器统一完成
+  if (qs.length) addQuestions(s, qs);
+}
+
+// 追问卡：服务端给出的结构化问题 → 可点选控件
+function addQuestions(s, qs) {
+  const ans = {};
+  const d = el('div', 'blk'); d.innerHTML = `<h5>还需要你确认 ${qs.length} 项</h5>`;
+  const blocks = qs.map((q) => {
+    const box = el('div', 'q');
+    box.innerHTML = `<div class="qt">${esc(q.title)}</div>${q.hint ? `<div class="qh">${esc(q.hint)}</div>` : ''}${q.reason ? `<div class="qr">⚠ ${esc(q.reason)}</div>` : ''}`;
+    const ctl = el('div');
+    if (q.kind === 'text' || q.kind === 'number') {
+      const i = el('input'); i.type = q.kind === 'number' ? 'number' : 'text'; i.placeholder = q.placeholder || ''; i.maxLength = q.maxLength || 100; if (q.kind === 'number') i.step = 'any';
+      i.oninput = () => { const t = i.value.trim(); t && (q.kind !== 'number' || isFinite(Number(t))) ? (ans[q.field] = q.kind === 'number' ? Number(t) : t) : delete ans[q.field]; refreshCard(); }; ctl.append(i);
+    } else if (q.kind === 'list') {
+      const i = el('textarea'); i.placeholder = q.placeholder || '';
+      i.oninput = () => { const a = split(i.value); a.length ? (ans[q.field] = a) : delete ans[q.field]; refreshCard(); }; ctl.append(i);
+    } else {
+      ctl.className = 'opts';
+      if (q.kind === 'multi' && q.selected?.length) ans[q.field] = [...q.selected];
+      q.options.forEach((o) => {
+        const b = el('span', 'opt'); b.innerHTML = esc(o.label) + (o.hint ? `<small>${esc(o.hint)}</small>` : '');
+        if (q.kind === 'multi' && ans[q.field]?.includes(o.value)) b.classList.add('sel');
+        (q.optEls ||= []).push([o.value, b]);
+        b.onclick = () => {
+          if (q.kind === 'single') { ans[q.field] = o.value; ctl.querySelectorAll('.opt').forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); }
+          else { const a = (ans[q.field] ||= []); const i = a.indexOf(o.value); i < 0 ? a.push(o.value) : a.splice(i, 1); b.classList.toggle('sel'); }
+          refreshCard();
+        };
+        ctl.append(b);
+      });
+    }
+    box.append(ctl);
+    if (q.allowCustom) {
+      const i = el('input'); i.type = 'text'; i.placeholder = '没有想要的？在这里补充其他（用顿号分隔）';
+      i.oninput = () => { const a = split(i.value); a.length ? (ans[q.field + '.custom'] = a) : delete ans[q.field + '.custom']; refreshCard(); }; box.append(i);
+    }
+    d.append(box);
+    return { q, box };
+  });
+  const bar = el('div', 'b'); bar.innerHTML = '<button class="p" disabled>确认</button><span class="st"></span>';
+  // 后台本来就有默认值的项：提供一键「沿用默认」。这是管理员的显式点击，不是系统替他默认
+  const withDef = qs.filter((q) => q.defaultValue !== undefined);
+  if (withDef.length) {
+    const db = el('button'); db.type = 'button'; db.textContent = `${withDef.length > 1 ? '这些' : '这项'}都沿用后台默认`;
+    db.onclick = () => { withDef.forEach((q) => { ans[q.field] = q.defaultValue; (q.optEls || []).forEach(([v, b]) => b.classList.toggle('sel', v === q.defaultValue)); }); refreshCard(); };
+    bar.prepend(db);
+  }
+  d.append(bar);
+  L(s).append(d); L(s).scrollTop = 1e9;
+  const btn = bar.querySelector('button.p'), stx = bar.querySelector('.st');
+  const visible = ({ q }) => !q.dependsOn || (ans[q.dependsOn.field] !== undefined ? ans[q.dependsOn.field] : q.dependsOn.current) === q.dependsOn.equals;
+  const answered = ({ q }) => q.allowEmpty || (q.kind === 'multi' ? ans[q.field]?.length > 0 || ans[q.field + '.custom']?.length > 0 : ans[q.field] !== undefined);
+  function refreshCard() {
+    blocks.forEach((b) => (b.box.style.display = visible(b) ? '' : 'none'));
+    const need = blocks.filter((b) => visible(b) && !answered(b));
+    btn.disabled = need.length > 0; stx.textContent = need.length ? `还差 ${need.length} 项` : '';
+  }
+  refreshCard();
+  btn.onclick = async () => {
+    const answers = {};
+    for (const b of blocks.filter(visible)) {
+      const f = b.q.field;
+      if (b.q.kind === 'multi') answers[f] = ans[f] ?? []; else if (ans[f] !== undefined) answers[f] = ans[f];
+      if (ans[f + '.custom']) answers[f + '.custom'] = ans[f + '.custom'];
+    }
+    lock(d, '✓ 已提交');
+    handle(s, await api('/api/answer', s, { answers }));
+  };
+}
+
+function addAsk(ask) {
+  const d = block(A, `<h5>${esc(ask.title)}</h5><div class="askb">${ask.options.map((o, i) => `<button type="button" data-i="${i}">${esc(o.label)}${o.desc ? `<small>${esc(o.desc)}</small>` : ''}</button>`).join('')}</div><div class="q" style="border:none;padding-bottom:0"><input type="text" placeholder="都不是？直接描述你要的审批，回车发送"></div>`);
+  d.querySelectorAll('button').forEach((b) => (b.onclick = () => { d.classList.add('done'); buildAsk(`我要搭建「${ask.options[+b.dataset.i].label}」审批`); }));
+  const i = d.querySelector('input'); i.onkeydown = (e) => { if (e.key === 'Enter' && i.value.trim()) { d.classList.add('done'); buildAsk(i.value.trim()); } };
+}
+function showUndoAll() {
+  A.log.querySelector('.undo')?.remove();
+  const b = el('button', 'undo'); b.textContent = '↶ 撤销上一次搭建/修改'; b.style.cssText = 'align-self:center;font-size:12px;padding:2px 12px';
+  b.onclick = () => {
+    const p = A.undo.pop(); S.basic.state = p.basic; S.form.state = p.form; S.flow.state = p.flow; A.assumptions = p.assumptions; A.built = p.built;
+    b.remove(); add(A, 'sys', '已撤销'); recompute(); renderOverview(); if (A.undo.length) showUndoAll();
+  };
+  A.log.append(b); A.log.scrollTop = 1e9;
+}
+
+/* =====================================================================
+   一句话搭建
+   ===================================================================== */
+const STEP_NAME = { basic: '基础信息', form: '表单', flow: '流程' };
+function outline(list, nm) {
+  if (!list.length) return '<span style="color:var(--sub)">（无）</span>';
+  const line = (n) => n.kind === 'approval' ? `<span class="pill ap">审批</span>${esc(ptext(n.approver))}` : `<span class="pill nt">抄送</span>${esc(n.recipients.map(ptext).join('；') || '待确认')}`;
+  return `<ul class="ol">${list.map((n) => n.kind === 'branch'
+    ? `<li><span class="pill fx">条件分支</span><ul>${n.branches.map((b) => `<li><span class="b2">${esc(nm[b.id])}</span>：${esc(b.groups.length ? b.groups.map((g) => g.map(condText).join(' 且 ')).join(' 或 ') : '条件待确认')} →${b.nodes.length ? outline(b.nodes, nm) : ' 继续往下'}</li>`).join('')}<li><span class="b2">其他情况</span> →${n.def.nodes.length ? outline(n.def.nodes, nm) : ' 继续往下'}</li></ul></li>`
+    : `<li>${line(n)}</li>`).join('')}</ul>`;
+}
+
+// 宽抽屉（创建）：完整方案总览 + 一次确认；窄抽屉（编辑器内）：只显示 AI 的假设清单，画布就是总览
+function renderOverview() {
+  const hero = $('#hero'), ov = $('#ov'), main = $('#dw-main');
+  const narrow = A.mode === 'refine';
+  hero.style.display = (!narrow && !A.built) ? '' : 'none';
+  main.classList.toggle('none', narrow && !A.assumptions.length);
+  if (!A.built && !narrow) { ov.innerHTML = ''; return; }
+  const b = S.basic.state, fs = S.form.state.fields, fl = S.flow.state, nm = flowNames(fl);
+  const keyA = A.assumptions.filter((a) => a.key), normA = A.assumptions.filter((a) => !a.key);
+  const li = (a) => `<li><span class="stg ${narrow ? 'lk' : ''}" ${narrow ? `data-go="${a.step}"` : ''}>${STEP_NAME[a.step]}</span><span>${esc(a.text)}</span></li>`;
+  const asHtml = (open) => `${keyA.length ? `<details class="as key" ${open ? 'open' : ''}><summary>⚠ 关键规则（${keyA.length} 项，会影响谁审批 / 谁能发起）</summary><ul>${keyA.map(li).join('')}</ul></details>` : ''}${normA.length ? `<details class="as norm"><summary>常规默认（${normA.length} 项，一般不用改）</summary><ul>${normA.map(li).join('')}</ul></details>` : ''}`;
+  if (narrow) {
+    ov.innerHTML = `<div style="font-size:12px;color:var(--sub);margin-bottom:6px">AI 替你做的选择，点标签跳到对应步骤检查</div>${asHtml(true)}`;
+    ov.querySelectorAll('[data-go]').forEach((x) => (x.onclick = () => gotoStep(x.dataset.go)));
+    return;
+  }
+  const pend = pendAll();
+  const kv = [['名称', b.name || '待确认'], ...(b.description ? [['说明', b.description]] : []), ['分组', b.category || '待确认'], ['谁可以发起', b.initiator ? (b.initiator.scope === 'all' ? '全员' : '指定人员：' + b.initiator.members.join('、')) : '待确认'], ['工作台展示', b.showInWorkbench == null ? '待确认' : b.showInWorkbench ? '展示' : '不展示']];
+  const ftext = (f) => `<span>${esc(f.label)}${f.required === true ? '<i> *</i>' : ''}<small>${f.type ? TYPES[f.type] : '待确认'}${f.type === 'detail' && f.children.length ? '：' + esc(f.children.map((c) => c.label).join('/')) : ''}</small></span>`;
+  const init = !b.initiator ? '待确认' : b.initiator.scope === 'all' ? '全员可发起' : '指定人员：' + b.initiator.members.join('、');
+  ov.innerHTML = `<div class="ovc">
+    <div class="ov-h"><b>「${esc(b.name || '未命名审批')}」整体方案</b><span class="tag">AI 已搭好 · 请确认</span></div>
+    <div class="ov-sub">基础信息 · ${fs.length} 个表单字段 · ${fl.nodes.length} 个流程节点。下面是 AI 替你做的选择，没问题就点「确认」；要改直接在右侧对话里说。</div>
+    ${pend ? `<div class="ov-banner">还有 ${pend} 项信息需要你补充（见右侧对话里的卡片），补充完才能确认。</div>` : ''}
+    ${asHtml(true)}
+    <div class="ovb">
+      <section><h4>基础信息</h4><dl class="kv">${kv.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl></section>
+      <section><h4>表单字段（${fs.length}）</h4><div class="fch">${fs.length ? fs.map(ftext).join('') : '<span style="color:var(--sub)">（暂无）</span>'}</div></section>
+      <section><h4>审批流程</h4><ul class="ol"><li><span class="pill fx">发起</span>${esc(init)}</li></ul>${outline(fl.nodes, nm)}<ul class="ol"><li><span class="pill fx">结束</span></li></ul></section>
+    </div>
+    <div class="actions" style="margin-top:14px"><span class="gate ok">${pend ? '' : '确认 = 采纳以上全部内容（含关键规则），并生成草稿进入编辑器'}</span><button id="ov-adjust">我要调整</button><button class="p" id="ov-confirm" ${pend ? 'disabled' : ''}>确认并创建草稿</button></div>
+  </div>`;
+  $('#ov-adjust').onclick = () => $('#q').focus();
+  $('#ov-confirm').onclick = confirmAll;
+}
+
+// 一次确认：表单与流程各自的「已齐」都置为已确认（服务端仍会校验必填信息是否齐全），然后生成草稿、进入编辑器
+async function confirmAll() {
+  const btn = $('#ov-confirm'); btn.disabled = true; btn.textContent = '创建中…';
+  for (const k of ['form', 'flow']) {
+    const r = await api('/api/answer', S[k], { answers: { confirm: 'yes' } });
+    r.errors.forEach((e) => add(A, 'sys', '⚠ ' + e));
+    S[k].state = r.next; S[k].missing = r.missing; render(S[k]);
+  }
+  if (S.form.state.confirmed && S.flow.state.confirmed && pendCount('basic') === 0) {
+    A.created = true; A.built = true;
+    const d = saveCurrent(); d.ai = true; d.assumptions = clone(A.assumptions);
+    listCat = S.basic.state.category || listCat;
+    enterEditor(true); toast('草稿已创建：请检查后发布');
+  } else renderOverview();
+}
+
+async function buildAsk(text) {
+  add(A, 'u', text); A.msgs.push({ role: 'user', content: text });
+  const wait = add(A, 'a', '正在为你搭建'); wait.classList.add('dots');
+  const heroBtn = $('#hero-go'); heroBtn.disabled = true; heroBtn.textContent = '搭建中…';
+  const sendBtn = $('#form button'); sendBtn.disabled = true;
+  const showChat = () => { A.chat = true; $('#dw').classList.add('has-chat'); };
+  try {
+    const res = await (await fetch('/api/build', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messages: A.msgs, assumptions: A.assumptions, states: { basic: S.basic.state, form: S.form.state, flow: S.flow.state } }) })).json();
+    wait.remove();
+    if (res.status === 'error') { showChat(); return add(A, 'sys', res.reply); }
+    A.msgs.push({ role: 'assistant', content: res.reply || '' });
+    if (res.reply) add(A, 'a', res.reply);
+    if (res.status === 'ask') { showChat(); return addAsk(res.ask); }
+    A.undo.push({ basic: clone(S.basic.state), form: clone(S.form.state), flow: clone(S.flow.state), assumptions: clone(A.assumptions), built: A.built });
+    for (const k of ['basic', 'form', 'flow']) { S[k].state = res.applied[k].next; S[k].missing = res.applied[k].missing; }
+    A.assumptions = res.assumptions; A.built = true;
+    showChat();
+    for (const k of ['basic', 'form', 'flow']) render(S[k], res.applied[k].touched);
+    renderOverview(); renderTips();
+    res.errors.forEach((e) => add(A, 'sys', '⚠ ' + e));
+    if (A.mode === 'refine') {      // 编辑器内：直接作用在当前草稿上，用一句话说明改了什么
+      const rows = ['basic', 'form', 'flow'].flatMap((k) => res.applied[k].rows.map((r) => r.label));
+      add(A, 'sys', rows.length ? `已调整：${rows.slice(0, 5).join('；')}${rows.length > 5 ? ` 等 ${rows.length} 项` : ''}` : '没有需要改动的内容');
+      if (curDraft) { saveCurrent(); }
+    }
+    for (const k of ['basic', 'form', 'flow']) {
+      if (!res.questions[k].length) continue;
+      add(A, 'sys', `「${STEP_NAME[k]}」还缺这些信息，请补充：`);
+      addQuestions(S[k], res.questions[k]);
+    }
+    showUndoAll();
+  } catch (e) { wait.remove(); showChat(); add(A, 'sys', '请求失败：' + e.message); }
+  finally { heroBtn.disabled = false; heroBtn.textContent = '开始搭建'; sendBtn.disabled = false; }
+}
+
+/* =====================================================================
+   抽屉开关 / 会话重置
+   ===================================================================== */
+const EX = ['配置一个请假审批流', '做一个出差费用报销', '采购申请，超过1万要总经理审批', '员工用章申请'];
+const TIPS_BUILT = ['审批人改成部门负责人', '把附件改成必填', '再加一级总经理审批', '金额门槛改成3000'];
+function renderTips() {
+  const tips = A.built ? TIPS_BUILT : EX, t = $('#tip-all');
+  t.innerHTML = tips.map((x) => `<button type="button">${esc(x)}</button>`).join('');
+  t.querySelectorAll('button').forEach((b, i) => (b.onclick = () => buildAsk(tips[i])));
+  $('#q').placeholder = A.built ? '说要改什么，比如「审批人改成部门负责人」' : '描述你要的审批，比如「做个请假审批」';
+}
+function welcome() {
+  A.log.innerHTML = '';
+  add(A, 'a', '你好！直接告诉我你想要什么审批，比如「配置一个请假审批流」。我会一次性把基础信息、表单字段、审批流程都搭好，并把我替你做的选择列清楚，你看完确认一次就行。');
+}
+function resetSession(keepOpenState) {
+  A.msgs = []; A.undo = []; A.assumptions = []; A.built = false; A.created = false; A.chat = false; welcome();
+  if (!keepOpenState) { S.basic.state = clone(meta.caps.approvalBasic.empty); S.form.state = clone(meta.caps.approvalForm.empty); S.flow.state = clone(meta.caps.approvalFlow.empty); for (const k of ['basic', 'form', 'flow']) { S[k].missing = []; S[k].undo = []; } }
+  $('#dw').classList.remove('has-chat'); renderOverview(); renderTips();
+}
+function openAI(mode) {
+  if (mode === 'create' && (!A.built || A.created)) { resetSession(false); recompute(); curDraft = null; }
+  A.mode = mode;
+  const dw = $('#dw'); dw.className = (mode === 'create' ? 'wide' : 'narrow') + (A.chat || mode === 'refine' ? ' has-chat' : '');
+  document.body.classList.add('dw-open'); document.body.classList.toggle('dw-wide', mode === 'create'); document.body.classList.toggle('dw-narrow', mode === 'refine');
+  $('#dw-sub').textContent = mode === 'create' ? '一次搭好，你只确认一次' : '在当前草稿上用一句话修改';
+  $('#dw-new').style.display = mode === 'create' ? '' : 'none';
+  renderOverview(); renderTips();
+  setTimeout(() => (mode === 'create' && !A.built ? $('#hero-q') : $('#q')).focus(), 50);
+}
+function closeDrawer() { document.body.classList.remove('dw-open', 'dw-wide', 'dw-narrow'); }
+$('#ai-new').onclick = () => openAI('create');
+$('#ai-fab').onclick = () => openAI('refine');
+$('#dw-x').onclick = closeDrawer; $('#dw-mask').onclick = closeDrawer;
+$('#dw-new').onclick = () => { resetSession(false); recompute(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+$('#form').onsubmit = (e) => { e.preventDefault(); const t = $('#q').value.trim(); if (!t) return; $('#q').value = ''; buildAsk(t); };
+const goHero = () => { const t = $('#hero-q').value.trim(); if (t) { $('#hero-q').value = ''; buildAsk(t); } };
+$('#hero-go').onclick = goHero; $('#hero-q').onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); goHero(); } };
+
+(async () => {
+  meta = await (await fetch('/api/meta')).json();
+  S.basic.state = clone(meta.caps.approvalBasic.empty); S.form.state = clone(meta.caps.approvalForm.empty); S.flow.state = clone(meta.caps.approvalFlow.empty);
+  for (const k of ['basic', 'form', 'flow']) S[k].missing = [];
+  $('#category').innerHTML = '<option value="">请选择分组</option>' + CATS.map((v) => `<option>${v}</option>`).join('');
+  $('#prov').textContent = { deepseek: 'DeepSeek', claude: 'Claude', qwen: '百炼 Qwen', mock: '离线规则模式' }[meta.provider];
+  $('#hero-ex').innerHTML = EX.map((t) => `<button class="ex" type="button">${esc(t)}</button>`).join('');
+  $('#hero-ex').querySelectorAll('button').forEach((b, i) => (b.onclick = () => buildAsk(EX[i])));
+  welcome(); renderTips(); renderOverview(); renderList();
+})();
+</script>
+</body>
+</html>

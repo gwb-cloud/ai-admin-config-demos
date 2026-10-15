@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 配置审批流 · Demo</title>
+<style>
+:root{--blue:#3370ff;--line:#dee0e3;--text:#1f2329;--sub:#646a73}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.7 -apple-system,"PingFang SC",sans-serif;color:var(--text);background:linear-gradient(180deg,#f0f5ff,#f7f8fa 320px)}
+.w{max-width:960px;margin:0 auto;padding:56px 24px}
+h1{margin:0 0 8px;font-size:28px}
+.lead{color:var(--sub);margin:0 0 32px;font-size:16px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:760px){.cards{grid-template-columns:1fr}}
+a.c{display:block;background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px 26px 22px;text-decoration:none;color:inherit;transition:.15s;box-shadow:0 2px 10px rgba(31,35,41,.05)}
+a.c:hover{border-color:#9db6ff;transform:translateY(-2px);box-shadow:0 8px 24px rgba(51,112,255,.12)}
+.tag{display:inline-block;font-size:12px;border-radius:10px;padding:1px 10px;margin-bottom:10px;background:#e8f0ff;color:var(--blue)}
+.tag.g{background:#efe9ff;color:#6b3fd4}
+a.c h2{margin:0 0 4px;font-size:20px}
+a.c .fit{color:var(--sub);font-size:13.5px;margin-bottom:12px}
+a.c ul{margin:0 0 16px;padding-left:18px;color:#40454d;font-size:14px}
+a.c .go{color:var(--blue);font-weight:600}
+.note{margin-top:30px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;font-size:13.5px;color:#40454d}
+.note b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>AI 配置审批流</h1>
+  <p class="lead">用自然语言配置管理后台：同一个目标，两种交互形态。</p>
+  <div class="cards">
+    <a class="c" href="./oneshot/">
+      <span class="tag">一句话搭建版</span>
+      <h2>说一句话，搭好整个审批</h2>
+      <div class="fit">适合放进「管理后台」本身</div>
+      <ul>
+        <li>列表页「✨ AI 搭建」按钮，不影响原有新建入口</li>
+        <li>一句话生成基础信息 + 表单 + 流程，AI 的选择分「关键规则 / 常规默认」，确认一次即可</li>
+        <li>生成草稿后进入编辑器，右下角常驻「✨ AI 调整」</li>
+      </ul>
+      <span class="go">打开 demo →</span>
+    </a>
+    <a class="c" href="./guided/">
+      <span class="tag g">逐步引导版</span>
+      <h2>跟着 AI，一步步把审批建好</h2>
+      <div class="fit">适合放进「AI 助手」对话里</div>
+      <ul>
+        <li>每次只问一题，配大白话讲解、推荐项和推荐理由</li>
+        <li>左侧进度、右侧实时预览，可「问问 AI」、可一键沿用推荐</li>
+        <li>每步有开场说明和完成小结，最后统一检查再发布</li>
+      </ul>
+      <span class="go">打开 demo →</span>
+    </a>
+  </div>
+  <div class="note">
+    <b>关于 AI：</b>网站默认是<b>离线规则模式</b>，不调用任何模型，只能演示内置的常见场景（请假、出差/费用报销等）。要体验真实 AI，打开任一 demo 后点左下角「AI 设置」，填入你自己的 DeepSeek key——它只保存在你的浏览器里，不会上传到本网站。<br>
+    页面中的人员、审批名称均为虚构的演示数据。
+  </div>
+</div>
+</body>
+</html>

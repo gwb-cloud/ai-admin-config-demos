@@ -1,0 +1,9 @@
+# 密钥与本地配置：绝对不要提交
+.env
+.env.*
+!.env.example
+
+# 构建产物与系统文件
+dist/
+node_modules/
+.DS_Store
