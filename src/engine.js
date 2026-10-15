@@ -5,8 +5,9 @@
 // askModel：async (system, history) => 已解析的 JSON 对象；传 null 表示离线，由各 capability 自带的规则解析兜底。
 const { CAPABILITIES } = require('./capabilities');
 const { handleBuild } = require('./build');
+const providers = require('./providers');
 
-function createEngine({ askModel = null, provider = 'mock' } = {}) {
+function createEngine({ askModel = null, provider = 'mock', providerName = '' } = {}) {
   // ---------- 统一出口 ----------
   // 校验补丁 → 应用 → 服务端计算缺项并生成追问卡片 → 返回结构化结果。
   // status 由服务端判定，不信任模型是否“觉得完成了”。
@@ -77,6 +78,7 @@ ${body.options ? `可选项：${JSON.stringify(body.options).slice(0, 600)}` : '
 
   const meta = () => ({
     provider,
+    providerName: providerName || (askModel ? provider : '离线规则模式'),
     caps: Object.fromEntries(Object.entries(CAPABILITIES).map(([k, c]) => [k, { title: c.title, empty: c.empty(), labels: c.labels || {} }])),
   });
 
@@ -94,4 +96,4 @@ ${body.options ? `可选项：${JSON.stringify(body.options).slice(0, 600)}` : '
   return { meta, chat, answer, build, help, route };
 }
 
-module.exports = { createEngine };
+module.exports = { createEngine, providers };

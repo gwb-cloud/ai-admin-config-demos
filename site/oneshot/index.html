@@ -814,7 +814,7 @@ $('#hero-go').onclick = goHero; $('#hero-q').onkeydown = (e) => { if (e.key === 
   S.basic.state = clone(meta.caps.approvalBasic.empty); S.form.state = clone(meta.caps.approvalForm.empty); S.flow.state = clone(meta.caps.approvalFlow.empty);
   for (const k of ['basic', 'form', 'flow']) S[k].missing = [];
   $('#category').innerHTML = '<option value="">请选择分组</option>' + CATS.map((v) => `<option>${v}</option>`).join('');
-  $('#prov').textContent = { deepseek: 'DeepSeek', claude: 'Claude', qwen: '百炼 Qwen', mock: '离线规则模式' }[meta.provider];
+  $('#prov').textContent = meta.providerName || meta.provider;
   $('#hero-ex').innerHTML = EX.map((t) => `<button class="ex" type="button">${esc(t)}</button>`).join('');
   $('#hero-ex').querySelectorAll('button').forEach((b, i) => (b.onclick = () => buildAsk(EX[i])));
   welcome(); renderTips(); renderOverview(); renderList();

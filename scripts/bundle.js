@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SRC = path.join(__dirname, '..', 'src');
-const MODULES = ['capabilities', 'flow', 'build', 'engine'];   // 都用 require('./xxx')，互相引用的名字必须在这里
+const MODULES = ['capabilities', 'flow', 'build', 'providers', 'engine'];   // 都用 require('./xxx')，互相引用的名字必须在这里
 
 function bundle() {
   let out = '/* 自动生成，请勿手改：运行 node scripts/build-static.js 重新生成 */\n(function () {\n"use strict";\nconst defs = {};\n';

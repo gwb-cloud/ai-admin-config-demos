@@ -691,7 +691,7 @@ $('#wz-new').onclick = wzStart; $('#wz-exit').onclick = () => { if (!W.started.b
 
 (async () => {
   meta = await (await fetch('/api/meta')).json();
-  $('#prov').textContent = { deepseek: 'DeepSeek', claude: 'Claude', qwen: '百炼 Qwen', mock: '离线规则模式' }[meta.provider];
+  $('#prov').textContent = meta.providerName || meta.provider;
   renderList();
 })();
 </script>
